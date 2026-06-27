@@ -1,0 +1,118 @@
+{
+  "project": "HealthSync",
+  "version": "0.1",
+  "product_direction": "Pluggable health metric sync, starting with body weight sync into Garmin Connect.",
+  "features": [
+    {
+      "id": "HS-001",
+      "title": "Create project harness and PRD",
+      "status": "done",
+      "priority": "high",
+      "description": "Define the HealthSync v0.1 product scope, agent instructions, feature list, and progress log.",
+      "acceptance_criteria": [
+        "docs/PRD.md exists and describes the v0.1 scope.",
+        "AGENTS.md exists and gives future agents implementation guidance.",
+        "harness/feature_list.json tracks the implementation queue.",
+        "harness/progress.md records initial decisions."
+      ]
+    },
+    {
+      "id": "HS-002",
+      "title": "Add canonical WeightMeasurement model",
+      "status": "todo",
+      "priority": "high",
+      "description": "Create the internal model used between source and destination adapters.",
+      "acceptance_criteria": [
+        "A WeightMeasurement model exists with source, measured_at, weight_kg, optional body composition fields, and metadata.",
+        "The model can produce a stable sync key for duplicate detection.",
+        "Basic validation prevents missing timestamp or invalid weight values."
+      ]
+    },
+    {
+      "id": "HS-003",
+      "title": "Add adapter interfaces",
+      "status": "todo",
+      "priority": "high",
+      "description": "Define source and destination interfaces for weight sync.",
+      "acceptance_criteria": [
+        "A source interface can fetch weight measurements.",
+        "A destination interface can upload a weight measurement.",
+        "The sync engine can depend on interfaces instead of concrete providers."
+      ]
+    },
+    {
+      "id": "HS-004",
+      "title": "Add file-based weight source",
+      "status": "todo",
+      "priority": "high",
+      "description": "Support local testing from a JSON or CSV weight export before Zepp Life integration is confirmed.",
+      "acceptance_criteria": [
+        "A sample data file can be loaded locally.",
+        "Records are normalized into WeightMeasurement objects.",
+        "Invalid records are skipped or rejected with clear errors."
+      ]
+    },
+    {
+      "id": "HS-005",
+      "title": "Add sync state for duplicate prevention",
+      "status": "todo",
+      "priority": "high",
+      "description": "Persist successfully synced measurement keys to prevent duplicate uploads.",
+      "acceptance_criteria": [
+        "A file-based sync state works locally.",
+        "Already synced measurements are skipped.",
+        "Failed uploads are not marked as synced."
+      ]
+    },
+    {
+      "id": "HS-006",
+      "title": "Add dry-run destination",
+      "status": "todo",
+      "priority": "medium",
+      "description": "Provide a safe destination for testing sync logic without touching Garmin.",
+      "acceptance_criteria": [
+        "Dry-run mode logs or returns the measurements that would be uploaded.",
+        "Dry-run can be used in tests.",
+        "Dry-run does not require provider credentials."
+      ]
+    },
+    {
+      "id": "HS-007",
+      "title": "Add Garmin weight destination",
+      "status": "todo",
+      "priority": "high",
+      "description": "Upload canonical weight measurements into Garmin Connect.",
+      "acceptance_criteria": [
+        "Garmin credentials are read from environment variables.",
+        "Authentication failure is handled clearly.",
+        "Successful upload marks the measurement as synced.",
+        "Provider-specific mapping stays inside the Garmin adapter."
+      ]
+    },
+    {
+      "id": "HS-008",
+      "title": "Decide Zepp Life source path",
+      "status": "todo",
+      "priority": "medium",
+      "description": "Confirm the practical way to extract Zepp Life weight data.",
+      "acceptance_criteria": [
+        "The selected source path is documented.",
+        "Risks and limitations are recorded.",
+        "The implementation plan is updated based on the confirmed path."
+      ]
+    },
+    {
+      "id": "HS-009",
+      "title": "Add cloud function entrypoint",
+      "status": "todo",
+      "priority": "low",
+      "description": "Expose the sync as an HTTP-triggered Google Cloud Function after local sync works.",
+      "acceptance_criteria": [
+        "The HTTP entrypoint reuses the sync engine.",
+        "Local functions-framework execution is documented.",
+        "Cloud environment variables are documented."
+      ]
+    }
+  ]
+}
+
