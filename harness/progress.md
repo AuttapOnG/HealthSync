@@ -55,10 +55,16 @@
   canonical measurements from a source and uploads them through a destination
   without provider-specific logic. Added tests using fake adapters to verify
   structural interface use, upload coordination, and failed-upload logging.
+- Completed HS-010 Garmin Connect weight destination POC. Investigated
+  `python-garminconnect` and `garth`; selected `python-garminconnect` for
+  HS-007 because `garth` is deprecated and new logins are not a practical base.
+  Added Garmin placeholders to `.env.example`, documented auth/session/2FA,
+  upload fields, risks, and HS-007 plan in `docs/garmin_connect_poc.md`, and
+  added `scripts/garmin_weight_poc.py` with dry-run-first mapping,
+  auth-check, and explicit double-confirmation before any real upload.
 
 ### Next Up
 
-- Run Garmin Connect weight destination POC.
 - Add file-based source and dry-run destination.
 - Add file-based sync state for duplicate prevention.
 
@@ -69,7 +75,5 @@
   or does it require an account-specific endpoint variation?
 - Does the user's actual Zepp Life export include `BODY/BODY_*.csv` with the
   expected weight columns, if API login/session access becomes impractical?
-- Which Garmin Connect library or API path should HealthSync use for v0.1
-  weight upload?
 - Should v0.1 sync only the latest measurement or all unsynced historical records?
 - Should cloud deployment use local file state, Cloud Storage, Firestore, or another state backend?

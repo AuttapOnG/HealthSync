@@ -98,7 +98,7 @@
     {
       "id": "HS-010",
       "title": "Run Garmin Connect weight destination POC",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "description": "Confirm the practical Garmin Connect authentication and weight upload path before implementing the full Garmin destination adapter.",
       "recommended_before": [

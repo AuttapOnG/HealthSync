@@ -20,6 +20,7 @@ env/
 !.env.example
 
 # Local sync/runtime state
+.local/
 data/sync_state.json
 *.log
 
@@ -28,4 +29,3 @@ data/sync_state.json
 Thumbs.db
 .vscode/
 .idea/
-
