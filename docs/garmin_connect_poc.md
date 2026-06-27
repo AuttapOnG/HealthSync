@@ -13,6 +13,34 @@ authentication and field mapping can be tested without uploading a real weight.
 An upload requires both `--allow-upload` and `--confirm-weight-kg` matching the
 sample measurement.
 
+## Live Verification
+
+On 2026-06-27, the POC was tested against the user's Garmin Connect account
+with a local `.env` and saved session tokens under `GARMIN_SESSION_DIR`.
+
+Verified:
+
+- Fresh login with MFA/2FA succeeded.
+- Session reuse succeeded from `.local/garmin-session/garmin_tokens.json`.
+- Read-only weight endpoints returned account data:
+  - `get_weigh_ins(...)`
+  - `get_body_composition(...)`
+  - `get_daily_weigh_ins(...)`
+- Historical records confirmed Garmin returns `weight` in grams, not kg:
+  - 2026-02-06: `110000.0` grams, equivalent to `110.0 kg`
+  - 2023-06-19: `98000.0` grams, equivalent to `98.0 kg`
+- A real guarded upload succeeded for `109.0 kg` using
+  `Garmin.add_weigh_in(weight=109.0, unitKey="kg", timestamp=...)`.
+- Read-back for 2026-06-27 confirmed one manual entry:
+  - `weight`: `109000.0` grams
+  - `sourceType`: `MANUAL`
+  - `samplePk`: `1782566397007`
+
+Implementation note: the upload API accepts kg when `unitKey="kg"`, while the
+read APIs return stored weight values in grams. The HS-007 adapter should
+convert Garmin read-back values from grams to kg when using reads for
+verification or duplicate checks.
+
 ## Investigated Paths
 
 ### python-garminconnect
@@ -134,6 +162,8 @@ from real Zepp Life records without surprising display behavior.
 - Keep Garmin-specific payload and auth handling inside the destination adapter.
 - Upload canonical `WeightMeasurement.weight_kg` with `unitKey="kg"` and
   `measured_at.isoformat()`.
+- Treat Garmin read-back `weight` values as grams and convert to kg before
+  comparing them with canonical `WeightMeasurement.weight_kg`.
 - Fail fast on missing credentials when no valid session exists.
 - Catch Garmin auth/connection exceptions and report clear errors.
 - Do not mark failed uploads as synced; leave that to the sync engine and state

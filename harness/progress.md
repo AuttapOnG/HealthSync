@@ -62,6 +62,12 @@
   upload fields, risks, and HS-007 plan in `docs/garmin_connect_poc.md`, and
   added `scripts/garmin_weight_poc.py` with dry-run-first mapping,
   auth-check, and explicit double-confirmation before any real upload.
+- Live Garmin verification succeeded with user-provided local credentials:
+  MFA login worked, reusable session tokens were saved under the ignored
+  `GARMIN_SESSION_DIR`, read-only weight endpoints returned historical records,
+  and a guarded `109.0 kg` upload was confirmed by read-back as one 2026-06-27
+  manual entry (`109000.0` grams). HS-007 must remember that Garmin upload
+  accepts kg with `unitKey="kg"`, while read-back weight values are grams.
 
 ### Next Up
 
