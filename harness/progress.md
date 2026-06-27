@@ -83,6 +83,10 @@
   invalid responses, and config validation. Documented optional `ZEPP_DAYS` in
   `.env.example`. Verified with `python -m pytest` and
   `python -m compileall healthsync scripts`.
+- Completed HS-006 dry-run destination. Added `DryRunWeightDestination` under
+  `healthsync/destinations/` to record canonical measurements that would be
+  uploaded without credentials or external API calls. Added tests covering the
+  destination interface, stored would-upload measurements, and sync engine use.
 
 ### Next Up
 

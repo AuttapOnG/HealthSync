@@ -89,7 +89,7 @@
     {
       "id": "HS-006",
       "title": "Add dry-run destination",
-      "status": "todo",
+      "status": "done",
       "priority": "medium",
       "description": "Provide a safe destination for testing sync logic without touching Garmin.",
       "acceptance_criteria": [
