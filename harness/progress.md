@@ -47,10 +47,14 @@
   with source, measured timestamp, weight, optional body composition fields,
   metadata, validation, and a stable duplicate-detection sync key. Added
   `tests/test_models.py` and `requirements-dev.txt` for pytest-based tests.
+- Completed HS-003 adapter interfaces. Added source and destination protocols
+  for weight measurements, plus a small `WeightSyncEngine` that fetches
+  canonical measurements from a source and uploads them through a destination
+  without provider-specific logic. Added tests using fake adapters to verify
+  structural interface use, upload coordination, and failed-upload logging.
 
 ### Next Up
 
-- Add source and destination interfaces.
 - Add file-based source and dry-run destination.
 - Add file-based sync state for duplicate prevention.
 

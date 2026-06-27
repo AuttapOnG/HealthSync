@@ -50,7 +50,7 @@
     {
       "id": "HS-003",
       "title": "Add adapter interfaces",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "description": "Define source and destination interfaces for weight sync.",
       "acceptance_criteria": [
