@@ -74,16 +74,28 @@
   only successful uploads as synced. Added tests for mark synced, duplicate
   skip, failed-upload behavior, and load/save state. Verified with
   `python -m pytest` and `python -m compileall healthsync scripts`.
+- Completed HS-004 Zepp Life weight source adapter. Added
+  `healthsync/sources/zepp_life.py` with environment/injectable session
+  configuration, read-only `weightRecords` fetching, profile latest-weight
+  fallback when records are empty, canonical `WeightMeasurement` mapping, and
+  clear errors for invalid responses or missing configuration. Added
+  `tests/test_zepp_life_source.py` for mapping, empty records, fallback,
+  invalid responses, and config validation. Documented optional `ZEPP_DAYS` in
+  `.env.example`. Verified with `python -m pytest` and
+  `python -m compileall healthsync scripts`.
 
 ### Next Up
 
-- Add Zepp Life weight source adapter.
 - Add dry-run destination.
+- Add Garmin weight destination.
 
 ### Open Questions
 
 - Can the user's actual Zepp Life app session provide weight data from
   `GET /users/{id}/members/-1/weightRecords` with the captured regional host,
   or does it require an account-specific endpoint variation?
+- Zepp Life app-session access is unofficial and tokens can expire; local runs
+  still depend on a valid user-owned `ZEPP_APP_TOKEN`, `ZEPP_USER_ID`, and
+  regional `ZEPP_HOST`.
 - Should v0.1 sync only the latest measurement or all unsynced historical records?
 - Should cloud deployment use local file state, Cloud Storage, Firestore, or another state backend?

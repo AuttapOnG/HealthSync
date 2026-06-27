@@ -61,7 +61,7 @@
     {
       "id": "HS-004",
       "title": "Add Zepp Life weight source",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "description": "Implement the first real source adapter using the confirmed Zepp Life user-owned app session path.",
       "acceptance_criteria": [
