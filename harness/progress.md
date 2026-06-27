@@ -68,11 +68,18 @@
   and a guarded `109.0 kg` upload was confirmed by read-back as one 2026-06-27
   manual entry (`109000.0` grams). HS-007 must remember that Garmin upload
   accepts kg with `unitKey="kg"`, while read-back weight values are grams.
+- Completed HS-005 file-based sync state for duplicate prevention. Added
+  `FileSyncState` with default local ignored path `data/sync_state.json` and
+  optional `HEALTHSYNC_SYNC_STATE_PATH`, integrated optional state into
+  `WeightSyncEngine`, skipped already synced weight measurements, and marked
+  only successful uploads as synced. Added tests for mark synced, duplicate
+  skip, failed-upload behavior, and load/save state. Verified with
+  `python -m pytest` and `python -m compileall healthsync scripts`.
 
 ### Next Up
 
-- Add file-based source and dry-run destination.
-- Add file-based sync state for duplicate prevention.
+- Add file-based source.
+- Add dry-run destination.
 
 ### Open Questions
 

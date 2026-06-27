@@ -74,7 +74,7 @@
     {
       "id": "HS-005",
       "title": "Add sync state for duplicate prevention",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "description": "Persist successfully synced measurement keys to prevent duplicate uploads.",
       "acceptance_criteria": [
