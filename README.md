@@ -55,6 +55,9 @@ Safe dry-run mode is the default and does not upload to Garmin:
 python scripts/sync_weight.py
 ```
 
+Dry-run mode does not mark measurements as synced, so a later Garmin run can
+still upload the same measurement after you confirm it.
+
 To upload to Garmin, both confirmations are required in the same runtime:
 
 ```powershell

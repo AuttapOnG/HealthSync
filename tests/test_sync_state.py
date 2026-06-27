@@ -96,3 +96,16 @@ def test_file_sync_state_loads_and_saves_state(tmp_path) -> None:
     assert json.loads(state_path.read_text(encoding="utf-8")) == {
         "synced_weight_keys": [measurement.sync_key]
     }
+
+
+def test_file_sync_state_loads_utf8_bom_file(tmp_path) -> None:
+    measurement = make_measurement()
+    state_path = tmp_path / "sync_state.json"
+    state_path.write_text(
+        json.dumps({"synced_weight_keys": [measurement.sync_key]}),
+        encoding="utf-8-sig",
+    )
+
+    state = FileSyncState(state_path)
+
+    assert state.is_synced(measurement.sync_key)

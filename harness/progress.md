@@ -98,6 +98,10 @@
   wires `ZeppLifeWeightSource` through `FileSyncState` into dry-run or Garmin,
   and refuses Garmin uploads unless `HEALTHSYNC_ALLOW_REAL_UPLOAD=true` and
   `--allow-real-upload` are both present in the runtime command.
+- After the first live local end-to-end run, Garmin showed the synced `107.4 kg`
+  value. Fixed two local-run polish issues discovered during that test:
+  dry-run no longer persists sync state, and file sync state loading accepts
+  UTF-8 BOM files produced by some Windows tooling.
 
 ### Next Up
 

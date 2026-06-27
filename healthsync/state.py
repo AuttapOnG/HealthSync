@@ -54,7 +54,7 @@ class FileSyncState:
             return set()
 
         try:
-            raw = json.loads(self.path.read_text(encoding="utf-8"))
+            raw = json.loads(self.path.read_text(encoding="utf-8-sig"))
         except json.JSONDecodeError as exc:
             raise ValueError(f"Invalid sync state JSON: {self.path}") from exc
 

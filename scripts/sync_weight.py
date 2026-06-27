@@ -22,8 +22,8 @@ if str(REPO_ROOT) not in sys.path:
 from healthsync.destinations import DryRunWeightDestination, GarminWeightDestination
 from healthsync.models import WeightMeasurement
 from healthsync.sources import ZeppLifeWeightSource
-from healthsync.state import FileSyncState
-from healthsync.sync_engine import WeightSyncEngine
+from healthsync.state import FileSyncState, SyncState
+from healthsync.sync_engine import WeightSyncEngine, WeightSyncResult
 
 
 REAL_UPLOAD_ENV_VAR = "HEALTHSYNC_ALLOW_REAL_UPLOAD"
@@ -50,11 +50,7 @@ def main() -> int:
         dry_run_destination = (
             destination if isinstance(destination, DryRunWeightDestination) else None
         )
-        result = WeightSyncEngine(
-            ZeppLifeWeightSource.from_env(),
-            destination,
-            sync_state=FileSyncState.from_env(),
-        ).sync_weight_measurements()
+        result = run_sync(destination, sync_state=build_sync_state(args.destination))
     except Exception as exc:
         print(f"HealthSync local weight sync failed: {exc}", file=sys.stderr)
         return 1
@@ -95,6 +91,24 @@ def build_destination(
         )
 
     return GarminWeightDestination.from_env()
+
+
+def build_sync_state(destination_name: str) -> SyncState | None:
+    if destination_name == "dry-run":
+        return None
+    return FileSyncState.from_env()
+
+
+def run_sync(
+    destination: DryRunWeightDestination | GarminWeightDestination,
+    *,
+    sync_state: SyncState | None,
+) -> WeightSyncResult:
+    return WeightSyncEngine(
+        ZeppLifeWeightSource.from_env(),
+        destination,
+        sync_state=sync_state,
+    ).sync_weight_measurements()
 
 
 def real_upload_allowed(allow_real_upload_flag: bool) -> bool:
