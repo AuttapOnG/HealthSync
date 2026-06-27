@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import date
 import os
 from pathlib import Path
 from typing import Any, Callable
@@ -11,6 +12,8 @@ from healthsync.models import WeightMeasurement
 
 
 DEFAULT_GARMIN_SESSION_DIR = Path(".local/garmin-session")
+GARMIN_VERIFY_UPLOADS_ENV_VAR = "GARMIN_VERIFY_UPLOADS"
+WEIGHT_MATCH_TOLERANCE_KG = 0.01
 
 
 class GarminDestinationError(RuntimeError):
@@ -29,6 +32,10 @@ class GarminUploadError(GarminDestinationError):
     """Raised when Garmin rejects or fails an upload."""
 
 
+class GarminVerificationError(GarminDestinationError):
+    """Raised when Garmin upload read-back verification fails."""
+
+
 @dataclass(frozen=True, slots=True)
 class GarminConfig:
     """Configuration for Garmin Connect authentication and token storage."""
@@ -36,6 +43,7 @@ class GarminConfig:
     email: str | None = None
     password: str | None = None
     session_dir: str | Path = DEFAULT_GARMIN_SESSION_DIR
+    verify_uploads: bool = False
 
     @classmethod
     def from_env(cls) -> "GarminConfig":
@@ -45,6 +53,7 @@ class GarminConfig:
             email=_optional_env("GARMIN_EMAIL"),
             password=_optional_env("GARMIN_PASSWORD"),
             session_dir=os.environ.get("GARMIN_SESSION_DIR", str(DEFAULT_GARMIN_SESSION_DIR)),
+            verify_uploads=_optional_bool_env(GARMIN_VERIFY_UPLOADS_ENV_VAR, default=False),
         )
 
     def __post_init__(self) -> None:
@@ -58,6 +67,8 @@ class GarminConfig:
             raise GarminConfigError(
                 "GARMIN_EMAIL and GARMIN_PASSWORD must be provided together"
             )
+        if not isinstance(self.verify_uploads, bool):
+            raise GarminConfigError("verify_uploads must be a bool")
 
         object.__setattr__(self, "email", email)
         object.__setattr__(self, "password", password)
@@ -112,6 +123,9 @@ class GarminWeightDestination:
             upload_method(**mapping.args)
         except Exception as exc:
             raise GarminUploadError(f"Garmin weight upload failed: {exc}") from exc
+
+        if self._config.verify_uploads:
+            verify_uploaded_weight(client, measurement)
 
     def _authenticated_client(self) -> Any:
         if self._client is not None:
@@ -173,8 +187,91 @@ def build_upload_mapping(measurement: WeightMeasurement) -> GarminUploadMapping:
     )
 
 
+def verify_uploaded_weight(client: Any, measurement: WeightMeasurement) -> None:
+    """Read back Garmin weights for the measurement date and confirm a match."""
+
+    measurement_date = measurement.measured_at.date()
+    try:
+        records = read_weight_records_for_date(client, measurement_date)
+    except GarminVerificationError:
+        raise
+    except Exception as exc:
+        raise GarminVerificationError(
+            f"Garmin weight verification read failed for {measurement_date.isoformat()}: {exc}"
+        ) from exc
+
+    read_back_weights = [
+        weight_kg
+        for record in _iter_weight_record_dicts(records)
+        if (weight_kg := garmin_record_weight_kg(record)) is not None
+    ]
+    for weight_kg in read_back_weights:
+        if abs(weight_kg - measurement.weight_kg) <= WEIGHT_MATCH_TOLERANCE_KG:
+            return
+
+    values = ", ".join(f"{weight_kg:.3f} kg" for weight_kg in read_back_weights)
+    if not values:
+        values = "no Garmin weight records"
+    raise GarminVerificationError(
+        "Garmin weight verification failed: expected "
+        f"{measurement.weight_kg:.3f} kg on {measurement_date.isoformat()}, "
+        f"read back {values}"
+    )
+
+
+def read_weight_records_for_date(client: Any, measurement_date: date) -> Any:
+    """Read Garmin weight records for one date using the selected client API."""
+
+    if not hasattr(client, "get_weigh_ins"):
+        raise GarminVerificationError(
+            "Garmin weight verification requires client.get_weigh_ins"
+        )
+
+    date_value = measurement_date.isoformat()
+    return client.get_weigh_ins(date_value, date_value)
+
+
+def garmin_record_weight_kg(record: dict[str, Any]) -> float | None:
+    """Return Garmin read-back weight in kg; Garmin read APIs report grams."""
+
+    value = record.get("weight")
+    if value is None:
+        value = record.get("weightInGrams")
+    if isinstance(value, bool) or not isinstance(value, int | float):
+        return None
+    return float(value) / 1000
+
+
+def _iter_weight_record_dicts(value: Any) -> list[dict[str, Any]]:
+    if isinstance(value, dict):
+        records = [value] if "weight" in value or "weightInGrams" in value else []
+        for child in value.values():
+            records.extend(_iter_weight_record_dicts(child))
+        return records
+    if isinstance(value, list):
+        records: list[dict[str, Any]] = []
+        for child in value:
+            records.extend(_iter_weight_record_dicts(child))
+        return records
+    return []
+
+
 def _optional_env(name: str) -> str | None:
     return _clean_optional(os.environ.get(name))
+
+
+def _optional_bool_env(name: str, *, default: bool) -> bool:
+    value = _clean_optional(os.environ.get(name))
+    if value is None:
+        return default
+    normalized = value.lower()
+    if normalized in {"1", "true", "yes", "on"}:
+        return True
+    if normalized in {"0", "false", "no", "off"}:
+        return False
+    raise GarminConfigError(
+        f"{name} must be one of true/false, yes/no, on/off, or 1/0"
+    )
 
 
 def _clean_optional(value: str | None) -> str | None:
@@ -209,6 +306,10 @@ __all__ = [
     "GarminDestinationError",
     "GarminUploadError",
     "GarminUploadMapping",
+    "GarminVerificationError",
     "GarminWeightDestination",
     "build_upload_mapping",
+    "garmin_record_weight_kg",
+    "read_weight_records_for_date",
+    "verify_uploaded_weight",
 ]

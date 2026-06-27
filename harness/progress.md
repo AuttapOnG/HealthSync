@@ -102,6 +102,12 @@
   value. Fixed two local-run polish issues discovered during that test:
   dry-run no longer persists sync state, and file sync state loading accepts
   UTF-8 BOM files produced by some Windows tooling.
+- Added optional Garmin read-back verification after weight upload. The Garmin
+  destination can now read weight records for the uploaded measurement date,
+  convert Garmin read-back grams to kg, and raise a clear verification error
+  when no matching weight is found so sync state is not marked synced. The
+  behavior defaults off via `GARMIN_VERIFY_UPLOADS=false` to avoid extra real
+  Garmin reads unless explicitly enabled.
 
 ### Next Up
 
@@ -117,3 +123,6 @@
   regional `ZEPP_HOST`.
 - Should v0.1 sync only the latest measurement or all unsynced historical records?
 - Should cloud deployment use local file state, Cloud Storage, Firestore, or another state backend?
+- Garmin upload verification still depends on unofficial Garmin Connect read
+  endpoints and may need adjustment if `python-garminconnect` changes the
+  `get_weigh_ins` response shape or signature.

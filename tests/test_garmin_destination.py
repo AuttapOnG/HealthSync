@@ -7,8 +7,10 @@ from healthsync.destinations.garmin import (
     GarminConfig,
     GarminConfigError,
     GarminUploadError,
+    GarminVerificationError,
     GarminWeightDestination,
     build_upload_mapping,
+    garmin_record_weight_kg,
 )
 from healthsync.models import WeightMeasurement
 from healthsync.state import FileSyncState
@@ -36,11 +38,15 @@ class FakeGarminClient:
         *,
         login_error: Exception | None = None,
         upload_error: Exception | None = None,
+        weigh_ins: object | None = None,
+        read_error: Exception | None = None,
         calls: list[tuple[str, dict]] | None = None,
         **kwargs,
     ) -> None:
         self.login_error = login_error
         self.upload_error = upload_error
+        self.weigh_ins = [] if weigh_ins is None else weigh_ins
+        self.read_error = read_error
         self.calls = calls if calls is not None else []
         self.kwargs = kwargs
 
@@ -58,6 +64,14 @@ class FakeGarminClient:
         self.calls.append(("add_body_composition", kwargs))
         if self.upload_error is not None:
             raise self.upload_error
+
+    def get_weigh_ins(self, start_date: str, end_date: str) -> object:
+        self.calls.append(
+            ("get_weigh_ins", {"start_date": start_date, "end_date": end_date})
+        )
+        if self.read_error is not None:
+            raise self.read_error
+        return self.weigh_ins
 
 
 class FakeWeightSource:
@@ -109,6 +123,15 @@ def test_config_reads_environment_and_ignores_placeholders(monkeypatch: pytest.M
     assert config.email is None
     assert config.password is None
     assert str(config.session_dir) == ".local\\test-garmin-session" or str(config.session_dir) == ".local/test-garmin-session"
+    assert config.verify_uploads is False
+
+
+def test_config_reads_verification_flag(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("GARMIN_VERIFY_UPLOADS", "true")
+
+    config = GarminConfig.from_env()
+
+    assert config.verify_uploads is True
 
 
 def test_config_requires_email_and_password_together() -> None:
@@ -182,3 +205,90 @@ def test_upload_failure_is_clear_and_not_marked_synced(tmp_path) -> None:
 
     with pytest.raises(GarminUploadError, match="Garmin weight upload failed"):
         destination.upload_weight_measurement(measurement)
+
+
+def test_upload_with_verification_success_reads_back_same_day_weight(tmp_path) -> None:
+    calls: list[tuple[str, dict]] = []
+    measurement = make_measurement(weight_kg=72.5)
+
+    def factory(**kwargs):
+        return FakeGarminClient(
+            calls=calls,
+            weigh_ins={"dateWeightList": [{"weight": 72500.0}]},
+            **kwargs,
+        )
+
+    destination = GarminWeightDestination(
+        GarminConfig(session_dir=tmp_path / "session", verify_uploads=True),
+        client_factory=factory,
+    )
+
+    destination.upload_weight_measurement(measurement)
+
+    assert calls == [
+        ("login", {"tokenstore": str(tmp_path / "session"), "kwargs": {}}),
+        (
+            "add_weigh_in",
+            {
+                "weight": 72.5,
+                "unitKey": "kg",
+                "timestamp": "2026-06-27T09:30:00+00:00",
+            },
+        ),
+        (
+            "get_weigh_ins",
+            {"start_date": "2026-06-27", "end_date": "2026-06-27"},
+        ),
+    ]
+
+
+def test_garmin_read_back_weight_grams_map_to_kg() -> None:
+    assert garmin_record_weight_kg({"weight": 109000.0}) == 109.0
+    assert garmin_record_weight_kg({"weightInGrams": 72500}) == 72.5
+
+
+def test_verification_failure_is_clear_and_not_marked_synced(tmp_path) -> None:
+    measurement = make_measurement(weight_kg=72.5)
+    state = FileSyncState(tmp_path / "sync_state.json")
+
+    def factory(**kwargs):
+        return FakeGarminClient(weigh_ins=[{"weight": 70000.0}], **kwargs)
+
+    destination = GarminWeightDestination(
+        GarminConfig(session_dir=tmp_path / "session", verify_uploads=True),
+        client_factory=factory,
+    )
+
+    result = WeightSyncEngine(
+        FakeWeightSource([measurement]),
+        destination,
+        sync_state=state,
+    ).sync_weight_measurements()
+
+    assert result.uploaded_count == 0
+    assert result.failed_count == 1
+    assert result.failed_sync_keys == (measurement.sync_key,)
+    assert not state.is_synced(measurement.sync_key)
+
+    with pytest.raises(GarminVerificationError, match="expected 72.500 kg"):
+        destination.upload_weight_measurement(measurement)
+
+
+def test_verification_disabled_by_default_does_not_read_back(tmp_path) -> None:
+    calls: list[tuple[str, dict]] = []
+
+    def factory(**kwargs):
+        return FakeGarminClient(
+            calls=calls,
+            read_error=RuntimeError("read should not happen"),
+            **kwargs,
+        )
+
+    destination = GarminWeightDestination(
+        GarminConfig(session_dir=tmp_path / "session"),
+        client_factory=factory,
+    )
+
+    destination.upload_weight_measurement(make_measurement())
+
+    assert [name for name, _ in calls] == ["login", "add_weigh_in"]
