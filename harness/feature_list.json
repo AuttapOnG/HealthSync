@@ -31,7 +31,7 @@
     {
       "id": "HS-008",
       "title": "Run Zepp Life source POC",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "description": "Confirm the practical way to extract Zepp Life weight data before committing too much architecture.",
       "recommended_before": [

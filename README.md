@@ -8,7 +8,9 @@ For AI or agent work, start with `AGENTS.md` and `harness/README.md`.
 
 ## Current Status
 
-Harness and PRD are in place. Implementation has not started yet.
+Harness and PRD are in place. HS-008 has a Zepp Life source POC documented in
+`docs/zepp_life_source_poc.md`, with project-local MCP notes in
+`docs/zepp_life_mcp_poc.md`.
 
 ## Initial Direction
 
@@ -26,5 +28,5 @@ Initial destination:
 
 Initial source strategy:
 
-- File-based import first
-- Zepp Life once the data extraction path is confirmed
+- Zepp Life user-owned session POC first
+- Zepp Life export/file-based import as fallback

@@ -26,10 +26,26 @@
 - Initialized git repository.
 - Added `.gitignore` for Python caches, virtual environments, local secrets, and local sync state.
 - Added git branch and commit policy to the harness.
+- Completed HS-008 Zepp Life source POC. After user feedback, selected a
+  user-owned Zepp Life app session as the preferred live POC path, using
+  captured `apptoken`, user id, and regional host for read-only weight records.
+  Kept Zepp Life personal data export, Google Fit/Health Connect, and Mi
+  Fitness export as fallbacks. Added `docs/zepp_life_source_poc.md`,
+  `scripts/zepp_life_login_weight_poc.py`, `scripts/zepp_life_weight_poc.py`,
+  and non-private sample files.
+- Added `zepp-life-mcp` into the project as pinned POC/reference tooling via
+  `requirements-poc.txt` and `docs/zepp_life_mcp_poc.md`. This gives a
+  project-local way to test Zepp cloud session and export-file modes without
+  making the HealthSync runtime depend on MCP yet.
+- Live Zepp/Huami privacy-page session test reached
+  `api-mifit.huami.com`. `weightRecords` returned an empty list, but
+  `GET /users/{user_id}` returned a profile-level latest weight, so the
+  HealthSync login POC now falls back to profile weight when records are empty.
+- Created a local ignored `.env` for Zepp POC credentials and updated
+  `scripts/zepp_life_login_weight_poc.py` to load `.env` automatically.
 
 ### Next Up
 
-- Run Zepp Life source POC and document the selected source path or fallback.
 - Implement `WeightMeasurement`.
 - Add source and destination interfaces.
 - Add file-based source and dry-run destination.
@@ -37,6 +53,10 @@
 
 ### Open Questions
 
-- What exact Zepp Life data extraction path should be used?
+- Can the user's actual Zepp Life app session provide weight data from
+  `GET /users/{id}/members/-1/weightRecords` with the captured regional host,
+  or does it require an account-specific endpoint variation?
+- Does the user's actual Zepp Life export include `BODY/BODY_*.csv` with the
+  expected weight columns, if API login/session access becomes impractical?
 - Should v0.1 sync only the latest measurement or all unsynced historical records?
 - Should cloud deployment use local file state, Cloud Storage, Firestore, or another state backend?
