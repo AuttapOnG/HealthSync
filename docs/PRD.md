@@ -244,11 +244,14 @@ HealthSync/
 
 - Add HTTP function wrapper.
 - Reuse existing sync engine.
+- Choose a cloud-safe sync state backend.
+- Document environment variables and secret/session storage.
 - Add deployment notes.
 
 ## 12. Open Questions
 
 - Should Zepp Life source sync only the profile latest weight when records are empty, or should it fail clearly?
 - Should v0.1 sync only the latest weight measurement or all unsynced historical records?
-- Should sync state be file-based only, or should cloud deployment use a managed store?
+- Should cloud deployment use Cloud Storage, Firestore, or another managed store for duplicate prevention?
+- Where should Garmin session tokens live in cloud deployment?
 - What is the expected schedule: manual run, daily schedule, or webhook-like trigger?

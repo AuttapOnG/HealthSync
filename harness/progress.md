@@ -111,18 +111,23 @@
 
 ### Next Up
 
-- Try a local dry-run with valid Zepp Life session settings.
+- Prepare HS-009 cloud function entrypoint using the existing local runner and
+  sync engine.
+- Decide the cloud state backend before deployment. File sync state is fine for
+  local runs, but Cloud Functions should use durable shared state.
+- Add deployment/runtime documentation for required environment variables,
+  session token storage, and real-upload safety gates.
 
 ### Open Questions
 
-- Can the user's actual Zepp Life app session provide weight data from
-  `GET /users/{id}/members/-1/weightRecords` with the captured regional host,
-  or does it require an account-specific endpoint variation?
 - Zepp Life app-session access is unofficial and tokens can expire; local runs
   still depend on a valid user-owned `ZEPP_APP_TOKEN`, `ZEPP_USER_ID`, and
   regional `ZEPP_HOST`.
 - Should v0.1 sync only the latest measurement or all unsynced historical records?
-- Should cloud deployment use local file state, Cloud Storage, Firestore, or another state backend?
+- Should cloud deployment use Cloud Storage, Firestore, or another state backend
+  for duplicate prevention?
+- Where should Garmin session tokens live in cloud deployment: Secret Manager,
+  Cloud Storage, or another managed store?
 - Garmin upload verification still depends on unofficial Garmin Connect read
   endpoints and may need adjustment if `python-garminconnect` changes the
   `get_weigh_ins` response shape or signature.
