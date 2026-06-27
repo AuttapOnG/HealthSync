@@ -96,6 +96,24 @@
       ]
     },
     {
+      "id": "HS-010",
+      "title": "Run Garmin Connect weight destination POC",
+      "status": "todo",
+      "priority": "high",
+      "description": "Confirm the practical Garmin Connect authentication and weight upload path before implementing the full Garmin destination adapter.",
+      "recommended_before": [
+        "HS-007"
+      ],
+      "acceptance_criteria": [
+        "At least one Garmin Connect Python library or API path is investigated.",
+        "Garmin credential, 2FA, and session requirements are documented without committing secrets.",
+        "A tiny proof-of-concept can authenticate or clearly report authentication failure.",
+        "The POC confirms whether weight upload is supported and what fields are required.",
+        "No real weight upload occurs unless explicitly enabled by a local confirmation flag.",
+        "The implementation plan for HS-007 is updated based on the confirmed path."
+      ]
+    },
+    {
       "id": "HS-007",
       "title": "Add Garmin weight destination",
       "status": "todo",

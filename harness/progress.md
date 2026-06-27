@@ -15,6 +15,9 @@
 - Keep harness state files under `harness/` so implementation context is organized and easy to find.
 - Use feature branches for implementation work.
 - Commit only when the user asks or the task explicitly includes committing.
+- Run a Garmin Connect destination POC before implementing the full Garmin
+  adapter because Garmin authentication, 2FA, and weight upload behavior need
+  confirmation.
 
 ### Completed
 
@@ -55,6 +58,7 @@
 
 ### Next Up
 
+- Run Garmin Connect weight destination POC.
 - Add file-based source and dry-run destination.
 - Add file-based sync state for duplicate prevention.
 
@@ -65,5 +69,7 @@
   or does it require an account-specific endpoint variation?
 - Does the user's actual Zepp Life export include `BODY/BODY_*.csv` with the
   expected weight columns, if API login/session access becomes impractical?
+- Which Garmin Connect library or API path should HealthSync use for v0.1
+  weight upload?
 - Should v0.1 sync only the latest measurement or all unsynced historical records?
 - Should cloud deployment use local file state, Cloud Storage, Firestore, or another state backend?
