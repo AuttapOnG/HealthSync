@@ -87,11 +87,17 @@
   `healthsync/destinations/` to record canonical measurements that would be
   uploaded without credentials or external API calls. Added tests covering the
   destination interface, stored would-upload measurements, and sync engine use.
+- Completed HS-007 Garmin weight destination. Added
+  `healthsync/destinations/garmin.py` with environment/injectable
+  configuration, token-session login first, credential fallback, canonical
+  weight/body-composition mapping, and clear config/auth/upload errors. Added
+  fake-client tests for Garmin mapping, configuration validation,
+  authentication failure, upload failure, and failed-upload sync-state
+  behavior.
 
 ### Next Up
 
-- Add dry-run destination.
-- Add Garmin weight destination.
+- Add a local Zepp Life -> sync state -> dry-run/Garmin runner.
 
 ### Open Questions
 

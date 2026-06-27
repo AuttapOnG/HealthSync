@@ -119,7 +119,7 @@
     {
       "id": "HS-007",
       "title": "Add Garmin weight destination",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "description": "Upload canonical weight measurements into Garmin Connect.",
       "acceptance_criteria": [
