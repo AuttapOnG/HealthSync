@@ -8,7 +8,8 @@
 - The first real use case is weight sync.
 - Garmin Connect is the first destination.
 - Zepp Life is the intended first real source, but the extraction path is still an open question.
-- A file-based source should be implemented first so the architecture can be tested without depending on Zepp Life.
+- A Zepp Life source POC should happen before building too much architecture.
+- A file-based source should remain the fallback so the architecture can be tested if Zepp Life access is not practical.
 - The core architecture should be source adapter -> canonical model -> destination adapter.
 - Keep `AGENTS.md` at the repo root as the primary agent hook.
 - Keep harness state files under `harness/` so implementation context is organized and easy to find.
@@ -28,6 +29,7 @@
 
 ### Next Up
 
+- Run Zepp Life source POC and document the selected source path or fallback.
 - Implement `WeightMeasurement`.
 - Add source and destination interfaces.
 - Add file-based source and dry-run destination.

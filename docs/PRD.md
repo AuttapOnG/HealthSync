@@ -56,8 +56,9 @@ Metric:
 
 Source:
 
-- Start with a file-based weight source for local validation.
-- Add Zepp Life as the intended first real source once the data extraction path is confirmed.
+- Run a Zepp Life source POC before committing too much implementation.
+- Use a file-based weight source as the fallback path for local validation.
+- Add Zepp Life as the intended first real source if the POC confirms a practical extraction path.
 
 Destination:
 
@@ -224,6 +225,8 @@ HealthSync/
 
 ### M2: Local Weight Sync Skeleton
 
+- Run Zepp Life source POC.
+- Document the selected source path or fallback.
 - Add canonical `WeightMeasurement`.
 - Add source and destination protocols.
 - Add file-based source.
@@ -237,9 +240,8 @@ HealthSync/
 - Handle auth and upload errors.
 - Keep dry-run mode available.
 
-### M4: Zepp Life Source Decision
+### M4: Zepp Life Source Adapter
 
-- Confirm practical Zepp Life data extraction path.
 - Implement adapter for the chosen path.
 - Keep file import as fallback.
 

@@ -29,6 +29,25 @@
       ]
     },
     {
+      "id": "HS-008",
+      "title": "Run Zepp Life source POC",
+      "status": "todo",
+      "priority": "high",
+      "description": "Confirm the practical way to extract Zepp Life weight data before committing too much architecture.",
+      "recommended_before": [
+        "HS-002",
+        "HS-003",
+        "HS-004"
+      ],
+      "acceptance_criteria": [
+        "At least two possible Zepp Life data extraction paths are investigated.",
+        "The chosen path is documented with setup steps, limitations, and risks.",
+        "A tiny proof-of-concept can read or simulate a latest weight record from the chosen path.",
+        "If direct Zepp Life access is not practical, a fallback source path is selected, such as export file, Google Fit, Health Connect, or another bridge.",
+        "The implementation plan is updated based on the confirmed source path."
+      ]
+    },
+    {
       "id": "HS-003",
       "title": "Add adapter interfaces",
       "status": "todo",
@@ -90,18 +109,6 @@
       ]
     },
     {
-      "id": "HS-008",
-      "title": "Decide Zepp Life source path",
-      "status": "todo",
-      "priority": "medium",
-      "description": "Confirm the practical way to extract Zepp Life weight data.",
-      "acceptance_criteria": [
-        "The selected source path is documented.",
-        "Risks and limitations are recorded.",
-        "The implementation plan is updated based on the confirmed path."
-      ]
-    },
-    {
       "id": "HS-009",
       "title": "Add cloud function entrypoint",
       "status": "todo",
@@ -115,4 +122,3 @@
     }
   ]
 }
-
