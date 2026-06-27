@@ -56,9 +56,8 @@ Metric:
 
 Source:
 
-- Run a Zepp Life source POC before committing too much implementation.
-- Use a file-based weight source as the fallback path for local validation.
-- Add Zepp Life as the intended first real source if the POC confirms a practical extraction path.
+- Use the Zepp Life user-owned app session path confirmed by the POC.
+- Do not build a file, CSV, or export-based source fallback for v0.1.
 
 Destination:
 
@@ -94,7 +93,6 @@ A source adapter fetches measurements and returns canonical models.
 
 Example sources:
 
-- `file_weight`
 - `zepp_life`
 - `withings`
 - `google_fit`
@@ -107,8 +105,7 @@ A destination adapter uploads canonical models to a target provider.
 Example destinations:
 
 - `garmin`
-- `json_file`
-- `csv_export`
+- `dry_run`
 
 ### 7.4 Sync Engine
 
@@ -180,7 +177,7 @@ Acceptance criteria:
 - Prefer explicit logs over silent failure.
 - Keep source and destination credentials separate.
 - Treat external APIs as unreliable and wrap network calls in clear error handling.
-- Make local testing possible without live provider credentials by using a file source and/or dry-run destination.
+- Make local testing possible without live destination credentials by using a dry-run destination.
 
 ## 10. Proposed Repository Structure
 
@@ -202,13 +199,12 @@ HealthSync/
 |   |-- sources/
 |   |   |-- __init__.py
 |   |   |-- base.py
-|   |   `-- file_weight.py
+|   |   `-- zepp_life.py
 |   `-- destinations/
 |       |-- __init__.py
 |       |-- base.py
 |       `-- garmin.py
 |-- data/
-|   |-- sample_weight.json
 |   `-- sync_state.json
 |-- tests/
 `-- requirements.txt
@@ -226,10 +222,10 @@ HealthSync/
 ### M2: Local Weight Sync Skeleton
 
 - Run Zepp Life source POC.
-- Document the selected source path or fallback.
+- Document the selected source path.
 - Add canonical `WeightMeasurement`.
 - Add source and destination protocols.
-- Add file-based source.
+- Add Zepp Life source adapter.
 - Add dry-run destination.
 - Add duplicate prevention with file state.
 
@@ -243,7 +239,6 @@ HealthSync/
 ### M4: Zepp Life Source Adapter
 
 - Implement adapter for the chosen path.
-- Keep file import as fallback.
 
 ### M5: Cloud Entrypoint
 
@@ -253,7 +248,7 @@ HealthSync/
 
 ## 12. Open Questions
 
-- What is the confirmed Zepp Life export or API path?
+- Should Zepp Life source sync only the profile latest weight when records are empty, or should it fail clearly?
 - Should v0.1 sync only the latest weight measurement or all unsynced historical records?
 - Should sync state be file-based only, or should cloud deployment use a managed store?
 - What is the expected schedule: manual run, daily schedule, or webhook-like trigger?

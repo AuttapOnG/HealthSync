@@ -61,7 +61,9 @@ user id, and region first.
 
 ## Export File Setup
 
-Use this as fallback when cloud/session access is incomplete or unstable:
+Historical note only: `zepp-life-mcp` supports export-file mode, but
+HealthSync v0.1 should not implement a file, CSV, or export-based source
+fallback.
 
 ```powershell
 zepp-life-mcp setup --mode export_file --export-path C:\path\to\ZeppExport

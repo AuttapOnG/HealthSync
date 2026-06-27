@@ -7,9 +7,9 @@
 - HealthSync should be a pluggable sync system, not a Garmin wellness data fetcher.
 - The first real use case is weight sync.
 - Garmin Connect is the first destination.
-- Zepp Life is the intended first real source, but the extraction path is still an open question.
+- Zepp Life user-owned app session is the first real source path.
 - A Zepp Life source POC should happen before building too much architecture.
-- A file-based source should remain the fallback so the architecture can be tested if Zepp Life access is not practical.
+- File, CSV, and export-based source fallbacks are out of scope for v0.1.
 - The core architecture should be source adapter -> canonical model -> destination adapter.
 - Keep `AGENTS.md` at the repo root as the primary agent hook.
 - Keep harness state files under `harness/` so implementation context is organized and easy to find.
@@ -32,8 +32,7 @@
 - Completed HS-008 Zepp Life source POC. After user feedback, selected a
   user-owned Zepp Life app session as the preferred live POC path, using
   captured `apptoken`, user id, and regional host for read-only weight records.
-  Kept Zepp Life personal data export, Google Fit/Health Connect, and Mi
-  Fitness export as fallbacks. Added `docs/zepp_life_source_poc.md`,
+  Added `docs/zepp_life_source_poc.md`,
   `scripts/zepp_life_login_weight_poc.py`, `scripts/zepp_life_weight_poc.py`,
   and non-private sample files.
 - Added `zepp-life-mcp` into the project as pinned POC/reference tooling via
@@ -78,7 +77,7 @@
 
 ### Next Up
 
-- Add file-based source.
+- Add Zepp Life weight source adapter.
 - Add dry-run destination.
 
 ### Open Questions
@@ -86,7 +85,5 @@
 - Can the user's actual Zepp Life app session provide weight data from
   `GET /users/{id}/members/-1/weightRecords` with the captured regional host,
   or does it require an account-specific endpoint variation?
-- Does the user's actual Zepp Life export include `BODY/BODY_*.csv` with the
-  expected weight columns, if API login/session access becomes impractical?
 - Should v0.1 sync only the latest measurement or all unsynced historical records?
 - Should cloud deployment use local file state, Cloud Storage, Firestore, or another state backend?

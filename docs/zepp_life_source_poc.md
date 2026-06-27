@@ -6,8 +6,11 @@ Date: 2026-06-27
 
 Prefer a user-owned Zepp Life app session as the first live POC path, because
 the user wants to log in to Zepp Life directly and read their own latest weight
-without waiting for an export. Keep Zepp Life personal data export as the
-stable fallback path.
+without waiting for an export.
+
+Current implementation decision after the POC: build the Zepp Life app-session
+source adapter directly. Do not build a file, CSV, or export-based source
+fallback for v0.1.
 
 Direct login/session path:
 
@@ -19,19 +22,7 @@ Direct login/session path:
 Important: this is an unofficial, read-only path based on the mobile API. The
 POC must not commit tokens, raw proxy captures, cookies, or account details.
 
-Export fallback path:
-
-1. Request a Zepp Life / Mi Fit personal data export.
-2. Download and unpack the generated archive locally.
-3. Read the newest weight row from `BODY/BODY_*.csv`.
-4. Normalize it into the future `WeightMeasurement` model.
-
-Fallback path:
-
-- Keep HS-004 file import as the universal fallback.
-- If the Zepp Life export is missing body data for the user's account, bridge
-  Zepp Life to Google Fit or Health Connect, then import a local export from
-  that bridge.
+Earlier export/file paths below are retained only as investigation notes.
 
 ## Paths Investigated
 
@@ -100,11 +91,11 @@ Evidence:
 - Zepp Life supports Xiaomi weighing scale products, which is the data family
   HealthSync needs for v0.1.
 
-Why this stays as fallback:
+Why this was investigated:
 
 - It is local and testable without a long-running unofficial cloud session.
 - It does not require HealthSync to store Zepp credentials, cookies, or tokens.
-- The implementation can reuse the planned file source shape.
+- It would have used a file source shape, which is no longer planned for v0.1.
 - It gives historical records, not only the latest live scale reading.
 
 Setup steps:
@@ -140,14 +131,14 @@ Evidence:
   share health data between apps.
 - Google Fit data can be exported through Google Takeout.
 
-Why this is fallback instead of primary:
+Why this was not selected:
 
 - Health Connect access is Android-app centered, not a simple local Python
   source for HealthSync.
 - Google Fit / Takeout introduces another provider and an export format that
   may differ from Zepp's original weight records.
 - Some users report intermittent third-party sync behavior, so it is best kept
-  as a fallback bridge.
+  as an alternate bridge.
 
 ### 4. Zepp Life to Mi Fitness transfer
 
@@ -158,11 +149,10 @@ Evidence:
 - Xiaomi also documents a Mi Fitness cloud export flow from the Xiaomi account
   privacy area.
 
-Why this is fallback:
+Why this was not selected:
 
 - It adds another app and account export step.
-- It may be useful if Zepp Life export access fails, but it is not simpler than
-  reading the Zepp export directly.
+- It is not simpler than reading Zepp Life directly.
 
 ## Tiny POC
 
@@ -183,7 +173,7 @@ Run the mock:
 python scripts/zepp_life_login_weight_poc.py --mock-response data\samples\zepp_life_weight_api_response.json
 ```
 
-The fallback export script at `scripts/zepp_life_weight_poc.py` reads either:
+The historical export script at `scripts/zepp_life_weight_poc.py` reads either:
 
 - a Zepp export `.zip`,
 - an unpacked Zepp export directory,
@@ -220,11 +210,12 @@ python scripts/zepp_life_weight_poc.py --sample
   and read-only weight fetching.
 - `zepp-life-mcp` should remain POC/reference tooling until HealthSync has its
   own adapter boundary. Do not make the core sync engine depend on MCP.
-- HS-004 should still support Zepp export CSV as a fallback file shape.
+- HS-004 should implement the Zepp Life app-session source adapter, not a CSV
+  or export-file source.
 - HealthSync should not store Zepp password, raw proxy captures, cookies, or
   committed tokens. If tokens are used locally, they belong in `.env` only.
-- Garmin upload work can proceed once the file source proves the canonical
-  weight model and duplicate key behavior.
+- Garmin upload work can proceed against canonical `WeightMeasurement`
+  objects from the Zepp source adapter.
 
 ## Sources
 

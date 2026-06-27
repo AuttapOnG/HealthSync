@@ -19,7 +19,7 @@ Current scope:
 
 - Metric: weight only.
 - Initial destination: Garmin Connect.
-- Initial source: file-based import first, then Zepp Life once the source path is confirmed.
+- Initial source: Zepp Life user-owned app session path confirmed by the POC.
 - Architecture: source adapter -> canonical model -> destination adapter.
 
 Out of scope for now:
@@ -29,6 +29,7 @@ Out of scope for now:
 - Heart rate sync.
 - Readiness or body battery sync.
 - Dashboard UI.
+- File, CSV, or export-based source fallback.
 - Broad multi-metric provider support before weight sync works.
 
 ## Engineering Rules
@@ -45,7 +46,7 @@ Out of scope for now:
 
 - Work on a feature branch for every implementation task.
 - Do not commit directly to `main` unless the user explicitly asks or the change is an initial project setup milestone.
-- Use branch names that describe the tracked work, such as `feature/HS-002-weight-model`, `feature/HS-004-file-weight-source`, `fix/<short-description>`, or `docs/<short-description>`.
+- Use branch names that describe the tracked work, such as `feature/HS-002-weight-model`, `feature/HS-004-zepp-life-source`, `fix/<short-description>`, or `docs/<short-description>`.
 - Before starting work, run `git status --short` and check the current branch.
 - If there are uncommitted changes, do not overwrite them. Continue only when the changes clearly belong to the current task; otherwise ask the user.
 - Do not auto-commit after every edit.

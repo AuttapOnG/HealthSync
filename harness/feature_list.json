@@ -43,7 +43,6 @@
         "At least two possible Zepp Life data extraction paths are investigated.",
         "The chosen path is documented with setup steps, limitations, and risks.",
         "A tiny proof-of-concept can read or simulate a latest weight record from the chosen path.",
-        "If direct Zepp Life access is not practical, a fallback source path is selected, such as export file, Google Fit, Health Connect, or another bridge.",
         "The implementation plan is updated based on the confirmed source path."
       ]
     },
@@ -61,14 +60,18 @@
     },
     {
       "id": "HS-004",
-      "title": "Add file-based weight source",
+      "title": "Add Zepp Life weight source",
       "status": "todo",
       "priority": "high",
-      "description": "Support local testing from a JSON or CSV weight export before Zepp Life integration is confirmed.",
+      "description": "Implement the first real source adapter using the confirmed Zepp Life user-owned app session path.",
       "acceptance_criteria": [
-        "A sample data file can be loaded locally.",
-        "Records are normalized into WeightMeasurement objects.",
-        "Invalid records are skipped or rejected with clear errors."
+        "Zepp Life source adapter reads session configuration from environment variables.",
+        "Zepp Life weight records are normalized into WeightMeasurement objects.",
+        "Provider-specific Zepp fields, hosts, auth headers, and response parsing stay inside healthsync/sources/.",
+        "Empty weightRecords responses are handled clearly, including profile latest-weight fallback if appropriate.",
+        "Invalid or incomplete Zepp responses are skipped or rejected with clear errors.",
+        "No credentials, tokens, cookies, captured sessions, or raw private responses are committed.",
+        "Tests cover Zepp-to-canonical mapping, empty records handling, and invalid response handling."
       ]
     },
     {

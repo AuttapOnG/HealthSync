@@ -28,5 +28,5 @@ Initial destination:
 
 Initial source strategy:
 
-- Zepp Life user-owned session POC first
-- Zepp Life export/file-based import as fallback
+- Zepp Life user-owned app session
+- No file, CSV, or export-based source fallback in v0.1
