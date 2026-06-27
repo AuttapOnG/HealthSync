@@ -94,10 +94,14 @@
   fake-client tests for Garmin mapping, configuration validation,
   authentication failure, upload failure, and failed-upload sync-state
   behavior.
+- Added local runner in `scripts/sync_weight.py`. It defaults to dry-run,
+  wires `ZeppLifeWeightSource` through `FileSyncState` into dry-run or Garmin,
+  and refuses Garmin uploads unless `HEALTHSYNC_ALLOW_REAL_UPLOAD=true` and
+  `--allow-real-upload` are both present in the runtime command.
 
 ### Next Up
 
-- Add a local Zepp Life -> sync state -> dry-run/Garmin runner.
+- Try a local dry-run with valid Zepp Life session settings.
 
 ### Open Questions
 
