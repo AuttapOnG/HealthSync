@@ -43,10 +43,13 @@
   HealthSync login POC now falls back to profile weight when records are empty.
 - Created a local ignored `.env` for Zepp POC credentials and updated
   `scripts/zepp_life_login_weight_poc.py` to load `.env` automatically.
+- Completed HS-002 canonical weight model. Added `healthsync.models.WeightMeasurement`
+  with source, measured timestamp, weight, optional body composition fields,
+  metadata, validation, and a stable duplicate-detection sync key. Added
+  `tests/test_models.py` and `requirements-dev.txt` for pytest-based tests.
 
 ### Next Up
 
-- Implement `WeightMeasurement`.
 - Add source and destination interfaces.
 - Add file-based source and dry-run destination.
 - Add file-based sync state for duplicate prevention.

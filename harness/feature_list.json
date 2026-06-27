@@ -19,7 +19,7 @@
     {
       "id": "HS-002",
       "title": "Add canonical WeightMeasurement model",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "description": "Create the internal model used between source and destination adapters.",
       "acceptance_criteria": [
