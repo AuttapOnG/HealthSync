@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 import pytest
 
 from healthsync.destinations.garmin import (
+    GARMIN_TOKENS_FILE_NAME,
     GarminAuthenticationError,
     GarminConfig,
     GarminConfigError,
@@ -11,6 +12,7 @@ from healthsync.destinations.garmin import (
     GarminWeightDestination,
     build_upload_mapping,
     garmin_record_weight_kg,
+    hydrate_session_tokens,
 )
 from healthsync.models import WeightMeasurement
 from healthsync.state import FileSyncState
@@ -134,6 +136,29 @@ def test_config_reads_verification_flag(monkeypatch: pytest.MonkeyPatch) -> None
     assert config.verify_uploads is True
 
 
+def test_config_reads_tokens_json(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("GARMIN_TOKENS_JSON", '{"oauth1_token": "token"}')
+
+    config = GarminConfig.from_env()
+
+    assert config.tokens_json == '{"oauth1_token": "token"}'
+
+
+def test_config_rejects_invalid_tokens_json() -> None:
+    with pytest.raises(GarminConfigError, match="GARMIN_TOKENS_JSON must be valid JSON"):
+        GarminConfig(tokens_json="not-json")
+
+
+def test_hydrates_session_tokens(tmp_path) -> None:
+    tokens_json = '{"oauth1_token": "token"}'
+
+    hydrate_session_tokens(tmp_path / "session", tokens_json)
+
+    assert (tmp_path / "session" / GARMIN_TOKENS_FILE_NAME).read_text(
+        encoding="utf-8"
+    ) == tokens_json
+
+
 def test_config_requires_email_and_password_together() -> None:
     with pytest.raises(GarminConfigError, match="provided together"):
         GarminConfig(email="user@example.com", password=None)
@@ -152,6 +177,27 @@ def test_missing_credentials_after_session_failure_is_clear(tmp_path) -> None:
 
     with pytest.raises(GarminConfigError, match="Stored Garmin session login failed"):
         destination.upload_weight_measurement(make_measurement())
+
+
+def test_session_tokens_are_written_before_login(tmp_path) -> None:
+    calls: list[tuple[str, dict]] = []
+    session_dir = tmp_path / "session"
+
+    def factory(**kwargs):
+        assert (session_dir / GARMIN_TOKENS_FILE_NAME).exists()
+        return FakeGarminClient(calls=calls, **kwargs)
+
+    destination = GarminWeightDestination(
+        GarminConfig(
+            session_dir=session_dir,
+            tokens_json='{"oauth1_token": "token"}',
+        ),
+        client_factory=factory,
+    )
+
+    destination.upload_weight_measurement(make_measurement())
+
+    assert calls[0] == ("login", {"tokenstore": str(session_dir), "kwargs": {}})
 
 
 def test_fresh_login_failure_is_clear(tmp_path) -> None:

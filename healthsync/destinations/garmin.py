@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date
+import json
 import os
 from pathlib import Path
 from typing import Any, Callable
@@ -12,6 +13,8 @@ from healthsync.models import WeightMeasurement
 
 
 DEFAULT_GARMIN_SESSION_DIR = Path(".local/garmin-session")
+GARMIN_TOKENS_JSON_ENV_VAR = "GARMIN_TOKENS_JSON"
+GARMIN_TOKENS_FILE_NAME = "garmin_tokens.json"
 GARMIN_VERIFY_UPLOADS_ENV_VAR = "GARMIN_VERIFY_UPLOADS"
 WEIGHT_MATCH_TOLERANCE_KG = 0.01
 
@@ -43,6 +46,7 @@ class GarminConfig:
     email: str | None = None
     password: str | None = None
     session_dir: str | Path = DEFAULT_GARMIN_SESSION_DIR
+    tokens_json: str | None = None
     verify_uploads: bool = False
 
     @classmethod
@@ -53,12 +57,14 @@ class GarminConfig:
             email=_optional_env("GARMIN_EMAIL"),
             password=_optional_env("GARMIN_PASSWORD"),
             session_dir=os.environ.get("GARMIN_SESSION_DIR", str(DEFAULT_GARMIN_SESSION_DIR)),
+            tokens_json=_optional_env(GARMIN_TOKENS_JSON_ENV_VAR),
             verify_uploads=_optional_bool_env(GARMIN_VERIFY_UPLOADS_ENV_VAR, default=False),
         )
 
     def __post_init__(self) -> None:
         email = _clean_optional(self.email)
         password = _clean_optional(self.password)
+        tokens_json = _clean_optional(self.tokens_json)
         session_dir = Path(self.session_dir)
 
         if not str(session_dir).strip():
@@ -69,10 +75,13 @@ class GarminConfig:
             )
         if not isinstance(self.verify_uploads, bool):
             raise GarminConfigError("verify_uploads must be a bool")
+        if tokens_json is not None:
+            _validate_tokens_json(tokens_json)
 
         object.__setattr__(self, "email", email)
         object.__setattr__(self, "password", password)
         object.__setattr__(self, "session_dir", session_dir)
+        object.__setattr__(self, "tokens_json", tokens_json)
 
     @property
     def has_credentials(self) -> bool:
@@ -132,6 +141,7 @@ class GarminWeightDestination:
             return self._client
 
         tokenstore = str(self._config.session_dir)
+        hydrate_session_tokens(self._config.session_dir, self._config.tokens_json)
 
         try:
             client = self._client_factory()
@@ -160,6 +170,17 @@ class GarminWeightDestination:
 
         self._client = client
         return client
+
+
+def hydrate_session_tokens(session_dir: Path, tokens_json: str | None) -> None:
+    """Write a configured Garmin token cache into the session directory."""
+
+    if tokens_json is None:
+        return
+
+    session_dir.mkdir(parents=True, exist_ok=True)
+    token_path = session_dir / GARMIN_TOKENS_FILE_NAME
+    token_path.write_text(tokens_json, encoding="utf-8")
 
 
 def build_upload_mapping(measurement: WeightMeasurement) -> GarminUploadMapping:
@@ -277,10 +298,20 @@ def _optional_bool_env(name: str, *, default: bool) -> bool:
 def _clean_optional(value: str | None) -> str | None:
     if value is None:
         return None
-    cleaned = value.strip()
+    cleaned = value.strip().removeprefix("\ufeff")
     if not cleaned or cleaned.startswith("replace-with-"):
         return None
     return cleaned
+
+
+def _validate_tokens_json(value: str) -> None:
+    try:
+        raw = json.loads(value)
+    except json.JSONDecodeError as exc:
+        raise GarminConfigError(f"{GARMIN_TOKENS_JSON_ENV_VAR} must be valid JSON") from exc
+
+    if not isinstance(raw, dict):
+        raise GarminConfigError(f"{GARMIN_TOKENS_JSON_ENV_VAR} must be a JSON object")
 
 
 def _default_client_factory(**kwargs: Any) -> Any:
@@ -300,6 +331,8 @@ def _prompt_mfa() -> str:
 
 __all__ = [
     "DEFAULT_GARMIN_SESSION_DIR",
+    "GARMIN_TOKENS_FILE_NAME",
+    "GARMIN_TOKENS_JSON_ENV_VAR",
     "GarminAuthenticationError",
     "GarminConfig",
     "GarminConfigError",
@@ -310,6 +343,7 @@ __all__ = [
     "GarminWeightDestination",
     "build_upload_mapping",
     "garmin_record_weight_kg",
+    "hydrate_session_tokens",
     "read_weight_records_for_date",
     "verify_uploaded_weight",
 ]

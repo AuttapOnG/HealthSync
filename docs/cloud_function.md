@@ -62,6 +62,7 @@ HEALTHSYNC_ALLOW_REAL_UPLOAD=true
 GARMIN_SESSION_DIR=/tmp/garmin-session
 GARMIN_EMAIL
 GARMIN_PASSWORD
+GARMIN_TOKENS_JSON
 GARMIN_VERIFY_UPLOADS=false
 ```
 
@@ -77,6 +78,11 @@ Use Secret Manager or your deployment system's secret injection for Zepp and
 Garmin secrets. Do not commit `.env`, Garmin session files, provider tokens, or
 captured provider responses.
 
+`GARMIN_TOKENS_JSON` is optional but recommended for cloud runs when Garmin MFA
+is enabled. Store the contents of local `.local/garmin-session/garmin_tokens.json`
+in Secret Manager, then inject it as `GARMIN_TOKENS_JSON`. The function writes
+that value to `/tmp/garmin-session/garmin_tokens.json` before Garmin login.
+
 ## State Backend
 
 Cloud Functions should use `CloudStorageSyncState` through
@@ -90,4 +96,3 @@ The GCS object uses the same JSON shape as local file state:
   "synced_weight_keys": []
 }
 ```
-
