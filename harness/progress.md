@@ -150,14 +150,26 @@
 - Added tests for the HTTP entrypoint, upload safety gate, and GCS sync state.
   Verified with `python -m pytest` and
   `python -m compileall healthsync scripts main.py`.
+- Deployed `healthsync-weight-sync` to Google Cloud project
+  `healthsync-84gaec` in `us-central1`, using GCS state bucket
+  `healthsync-84gaec-state`, Secret Manager provider secrets, and real Garmin
+  upload mode.
+- Added Garmin session-token cache loading from Secret Manager and verified a
+  real cloud upload succeeded; a second run skipped the same measurement via
+  GCS duplicate state.
+- Created Cloud Scheduler job `healthsync-weight-sync-every-4h` with cron
+  `0 */4 * * *` in timezone `Asia/Bangkok`, replacing the initial every-6-hour
+  schedule after confirming provider/API risk was still low. The first
+  every-6-hour scheduled trigger had already invoked the function successfully
+  at 2026-06-28 18:00 Asia/Bangkok.
+- Created Google Cloud Billing budget `HealthSync monthly guardrail` for
+  project `healthsync-84gaec` at 35 THB/month, with alerts at 50%, 90%, and
+  100% current spend.
 
 ### Next Up
 
-- Deploy the function to a real Google Cloud project and verify the service
-  account can read/write the configured GCS state object.
-- Decide where Garmin session tokens should live for repeat cloud runs. The
-  current documented starter path uses `/tmp/garmin-session`, so cloud runs may
-  need Garmin credentials again when the instance is cold.
+- Monitor the next few scheduled runs for Zepp token expiry or Garmin auth
+  changes.
 
 ### Open Questions
 
@@ -165,8 +177,6 @@
   still depend on a valid user-owned `ZEPP_APP_TOKEN`, `ZEPP_USER_ID`, and
   regional `ZEPP_HOST`.
 - Should v0.1 sync only the latest measurement or all unsynced historical records?
-- Where should Garmin session tokens live in cloud deployment: Secret Manager,
-  Cloud Storage, or another managed store?
 - Garmin upload verification still depends on unofficial Garmin Connect read
   endpoints and may need adjustment if `python-garminconnect` changes the
   `get_weigh_ins` response shape or signature.

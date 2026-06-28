@@ -96,3 +96,21 @@ The GCS object uses the same JSON shape as local file state:
   "synced_weight_keys": []
 }
 ```
+
+## Scheduler
+
+The deployed function can be triggered every four hours with Cloud Scheduler:
+
+```powershell
+gcloud scheduler jobs create http healthsync-weight-sync-every-4h `
+  --location=us-central1 `
+  --schedule="0 */4 * * *" `
+  --time-zone="Asia/Bangkok" `
+  --uri="https://healthsync-weight-sync-qwxh5idy5q-uc.a.run.app" `
+  --http-method=POST `
+  --oidc-service-account-email="healthsync-runner@healthsync-84gaec.iam.gserviceaccount.com" `
+  --oidc-token-audience="https://healthsync-weight-sync-qwxh5idy5q-uc.a.run.app"
+```
+
+The service account also needs `roles/run.invoker` on the underlying Cloud Run
+service.
