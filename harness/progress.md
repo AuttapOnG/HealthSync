@@ -111,12 +111,7 @@
 
 ### Next Up
 
-- Prepare HS-009 cloud function entrypoint using the existing local runner and
-  sync engine.
-- Decide the cloud state backend before deployment. File sync state is fine for
-  local runs, but Cloud Functions should use durable shared state.
-- Add deployment/runtime documentation for required environment variables,
-  session token storage, and real-upload safety gates.
+- See the 2026-06-28 update for HS-009 cloud function work.
 
 ### Open Questions
 
@@ -124,8 +119,52 @@
   still depend on a valid user-owned `ZEPP_APP_TOKEN`, `ZEPP_USER_ID`, and
   regional `ZEPP_HOST`.
 - Should v0.1 sync only the latest measurement or all unsynced historical records?
-- Should cloud deployment use Cloud Storage, Firestore, or another state backend
-  for duplicate prevention?
+- Where should Garmin session tokens live in cloud deployment: Secret Manager,
+  Cloud Storage, or another managed store?
+- Garmin upload verification still depends on unofficial Garmin Connect read
+  endpoints and may need adjustment if `python-garminconnect` changes the
+  `get_weigh_ins` response shape or signature.
+
+## 2026-06-28
+
+### Decisions
+
+- Use Google Cloud Storage as the first cloud duplicate-prevention state
+  backend for HS-009 because it preserves the local JSON state shape and keeps
+  deployment simpler than adding a database.
+- Keep the Cloud Functions HTTP entrypoint safe by default: it uses dry-run
+  unless `HEALTHSYNC_DESTINATION=garmin`, and Garmin uploads still require
+  `HEALTHSYNC_ALLOW_REAL_UPLOAD=true`.
+
+### Completed
+
+- Completed HS-009 cloud function entrypoint. Added `main.sync_weight_http`,
+  which reuses `ZeppLifeWeightSource`, `GarminWeightDestination` or
+  `DryRunWeightDestination`, configured sync state, and `WeightSyncEngine`.
+- Added `CloudStorageSyncState` for durable Google Cloud Storage-backed
+  duplicate prevention, selected with `HEALTHSYNC_STATE_BACKEND=gcs`.
+- Added runtime dependencies in `requirements.txt`.
+- Added `docs/cloud_function.md` with local `functions-framework` execution,
+  cloud environment variables, GCS state settings, and secret-handling notes.
+- Updated `.env.example` and `README.md` with cloud destination/state settings.
+- Added tests for the HTTP entrypoint, upload safety gate, and GCS sync state.
+  Verified with `python -m pytest` and
+  `python -m compileall healthsync scripts main.py`.
+
+### Next Up
+
+- Deploy the function to a real Google Cloud project and verify the service
+  account can read/write the configured GCS state object.
+- Decide where Garmin session tokens should live for repeat cloud runs. The
+  current documented starter path uses `/tmp/garmin-session`, so cloud runs may
+  need Garmin credentials again when the instance is cold.
+
+### Open Questions
+
+- Zepp Life app-session access is unofficial and tokens can expire; cloud runs
+  still depend on a valid user-owned `ZEPP_APP_TOKEN`, `ZEPP_USER_ID`, and
+  regional `ZEPP_HOST`.
+- Should v0.1 sync only the latest measurement or all unsynced historical records?
 - Where should Garmin session tokens live in cloud deployment: Secret Manager,
   Cloud Storage, or another managed store?
 - Garmin upload verification still depends on unofficial Garmin Connect read

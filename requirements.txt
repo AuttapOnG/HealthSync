@@ -1,0 +1,5 @@
+# Runtime dependencies for local runner and Google Cloud Functions deployment.
+functions-framework>=3,<4
+garminconnect>=0.2.28
+google-cloud-storage>=2,<4
+

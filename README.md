@@ -34,6 +34,12 @@ Initial source strategy:
 
 ## Local Weight Sync
 
+Install runtime dependencies for the local runner or Cloud Functions entrypoint:
+
+```powershell
+python -m pip install -r requirements.txt
+```
+
 Install development dependencies for tests:
 
 ```powershell
@@ -67,3 +73,15 @@ python scripts/sync_weight.py --destination garmin --allow-real-upload
 
 Without both the environment gate and the command flag, the runner refuses to
 create a real Garmin destination.
+
+## Cloud Function
+
+The HTTP-triggered Google Cloud Functions target is:
+
+```text
+main.sync_weight_http
+```
+
+It reuses the same Zepp source, Garmin destination, sync state, and sync engine
+as the local runner. See `docs/cloud_function.md` for local
+`functions-framework` commands and cloud environment variables.

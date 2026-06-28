@@ -132,7 +132,7 @@
     {
       "id": "HS-009",
       "title": "Add cloud function entrypoint",
-      "status": "todo",
+      "status": "done",
       "priority": "low",
       "description": "Expose the sync as an HTTP-triggered Google Cloud Function after local sync works.",
       "acceptance_criteria": [
