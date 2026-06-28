@@ -39,6 +39,35 @@ def test_sync_weight_http_returns_sync_result(monkeypatch: pytest.MonkeyPatch) -
     }
 
 
+def test_sync_weight_http_logs_sync_result(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    monkeypatch.setattr(
+        main,
+        "run_weight_sync_from_env",
+        lambda: WeightSyncResult(
+            fetched_count=1,
+            uploaded_count=0,
+            failed_count=0,
+            skipped_count=1,
+            skipped_sync_keys=("already-synced",),
+        ),
+    )
+
+    main.sync_weight_http(FakeRequest())
+
+    record = json.loads(capsys.readouterr().out)
+    assert record["message"] == "HealthSync weight sync result"
+    assert record["severity"] == "INFO"
+    assert record["http_status"] == 200
+    assert record["fetched_count"] == 1
+    assert record["uploaded_count"] == 0
+    assert record["failed_count"] == 0
+    assert record["skipped_count"] == 1
+    assert record["skipped_sync_keys"] == ["already-synced"]
+
+
 def test_sync_weight_http_reports_sync_failure(monkeypatch: pytest.MonkeyPatch) -> None:
     def fail() -> WeightSyncResult:
         raise RuntimeError("Zepp Life API request failed")

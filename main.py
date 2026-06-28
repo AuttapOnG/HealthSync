@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 from typing import Any
 
@@ -14,6 +15,7 @@ from healthsync.sync_engine import WeightSyncEngine, WeightSyncResult
 
 DESTINATION_ENV_VAR = "HEALTHSYNC_DESTINATION"
 REAL_UPLOAD_ENV_VAR = "HEALTHSYNC_ALLOW_REAL_UPLOAD"
+LOGGER = logging.getLogger(__name__)
 
 
 def sync_weight_http(request: Any) -> tuple[str, int, dict[str, str]]:
@@ -26,9 +28,11 @@ def sync_weight_http(request: Any) -> tuple[str, int, dict[str, str]]:
     try:
         result = run_weight_sync_from_env()
     except Exception as exc:
+        LOGGER.exception("HealthSync weight sync failed")
         return _json_response({"error": str(exc)}, status=500)
 
     status = 200 if result.failed_count == 0 else 502
+    log_sync_result(result, status=status)
     return _json_response(result_to_payload(result), status=status)
 
 
@@ -85,6 +89,28 @@ def result_to_payload(result: WeightSyncResult) -> dict[str, Any]:
         "failed_sync_keys": list(result.failed_sync_keys),
         "skipped_sync_keys": list(result.skipped_sync_keys),
     }
+
+
+def log_sync_result(result: WeightSyncResult, *, status: int) -> None:
+    """Write sync counters to Cloud Logging for scheduled-run inspection."""
+
+    print(
+        json.dumps(
+            {
+                "severity": "INFO",
+                "message": "HealthSync weight sync result",
+                "http_status": status,
+                "fetched_count": result.fetched_count,
+                "uploaded_count": result.uploaded_count,
+                "failed_count": result.failed_count,
+                "skipped_count": result.skipped_count,
+                "failed_sync_keys": list(result.failed_sync_keys),
+                "skipped_sync_keys": list(result.skipped_sync_keys),
+            },
+            sort_keys=True,
+        ),
+        flush=True,
+    )
 
 
 def _json_response(
