@@ -61,6 +61,10 @@ def main() -> int:
         "uploaded_count": result.uploaded_count,
         "failed_count": result.failed_count,
         "skipped_count": result.skipped_count,
+        "keepalive_count": result.keepalive_count,
+        "keepalive_failed": result.keepalive_failed,
+        "destination_suspended": result.destination_suspended,
+        "destination_suspension_reason": result.destination_suspension_reason,
         "failed_sync_keys": list(result.failed_sync_keys),
         "skipped_sync_keys": list(result.skipped_sync_keys),
     }
@@ -71,7 +75,7 @@ def main() -> int:
         ]
 
     print(json.dumps(payload, indent=2, sort_keys=True))
-    return 0 if result.failed_count == 0 else 1
+    return 0 if result.failed_count == 0 and not result.keepalive_failed else 1
 
 
 def build_destination(
@@ -108,6 +112,7 @@ def run_sync(
         ZeppLifeWeightSource.from_env(),
         destination,
         sync_state=sync_state,
+        destination_name="garmin" if isinstance(destination, GarminWeightDestination) else None,
     ).sync_weight_measurements()
 
 

@@ -140,6 +140,23 @@
         "Local functions-framework execution is documented.",
         "Cloud environment variables are documented."
       ]
+    },
+    {
+      "id": "HS-011",
+      "title": "Harden Garmin unattended auth",
+      "status": "done",
+      "priority": "high",
+      "description": "Reduce repeated Garmin login attempts by persisting refreshed token cache, making safe read-only keepalive calls on duplicate-only runs, and manually suspending Garmin after provider failure until the user fixes credentials/session state.",
+      "acceptance_criteria": [
+        "Refreshed Garmin token cache can be persisted back to Secret Manager when configured.",
+        "Existing warm Garmin token cache files are not overwritten by stale GARMIN_TOKENS_JSON values.",
+        "Duplicate-only Garmin runs make one read-only keepalive request instead of posting duplicate weight data.",
+        "Garmin upload or keepalive failure records a manual destination suspension in sync state.",
+        "Future scheduled runs skip Garmin while the manual suspension remains present.",
+        "Local and cloud sync results include keepalive and destination suspension fields.",
+        "Configuration and manual recovery steps are documented without committing secrets.",
+        "Tests cover token persistence, keepalive behavior, manual suspension state, and suspended-run skipping."
+      ]
     }
   ]
 }

@@ -31,7 +31,7 @@ def sync_weight_http(request: Any) -> tuple[str, int, dict[str, str]]:
         LOGGER.exception("HealthSync weight sync failed")
         return _json_response({"error": str(exc)}, status=500)
 
-    status = 200 if result.failed_count == 0 else 502
+    status = 200 if result.failed_count == 0 and not result.keepalive_failed else 502
     log_sync_result(result, status=status)
     return _json_response(result_to_payload(result), status=status)
 
@@ -47,6 +47,7 @@ def run_weight_sync_from_env() -> WeightSyncResult:
         ZeppLifeWeightSource.from_env(),
         destination,
         sync_state=sync_state,
+        destination_name=destination_name,
     ).sync_weight_measurements()
 
 
@@ -86,6 +87,10 @@ def result_to_payload(result: WeightSyncResult) -> dict[str, Any]:
         "uploaded_count": result.uploaded_count,
         "failed_count": result.failed_count,
         "skipped_count": result.skipped_count,
+        "keepalive_count": result.keepalive_count,
+        "keepalive_failed": result.keepalive_failed,
+        "destination_suspended": result.destination_suspended,
+        "destination_suspension_reason": result.destination_suspension_reason,
         "failed_sync_keys": list(result.failed_sync_keys),
         "skipped_sync_keys": list(result.skipped_sync_keys),
     }
@@ -104,6 +109,10 @@ def log_sync_result(result: WeightSyncResult, *, status: int) -> None:
                 "uploaded_count": result.uploaded_count,
                 "failed_count": result.failed_count,
                 "skipped_count": result.skipped_count,
+                "keepalive_count": result.keepalive_count,
+                "keepalive_failed": result.keepalive_failed,
+                "destination_suspended": result.destination_suspended,
+                "destination_suspension_reason": result.destination_suspension_reason,
                 "failed_sync_keys": list(result.failed_sync_keys),
                 "skipped_sync_keys": list(result.skipped_sync_keys),
             },

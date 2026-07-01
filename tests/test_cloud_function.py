@@ -33,6 +33,10 @@ def test_sync_weight_http_returns_sync_result(monkeypatch: pytest.MonkeyPatch) -
         "failed_count": 0,
         "failed_sync_keys": [],
         "fetched_count": 2,
+        "keepalive_count": 0,
+        "keepalive_failed": False,
+        "destination_suspended": False,
+        "destination_suspension_reason": None,
         "skipped_count": 1,
         "skipped_sync_keys": ["already-synced"],
         "uploaded_count": 1,
@@ -65,7 +69,33 @@ def test_sync_weight_http_logs_sync_result(
     assert record["uploaded_count"] == 0
     assert record["failed_count"] == 0
     assert record["skipped_count"] == 1
+    assert record["keepalive_count"] == 0
+    assert record["keepalive_failed"] is False
+    assert record["destination_suspended"] is False
+    assert record["destination_suspension_reason"] is None
     assert record["skipped_sync_keys"] == ["already-synced"]
+
+
+def test_sync_weight_http_reports_keepalive_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        main,
+        "run_weight_sync_from_env",
+        lambda: WeightSyncResult(
+            fetched_count=1,
+            uploaded_count=0,
+            failed_count=0,
+            skipped_count=1,
+            keepalive_failed=True,
+            skipped_sync_keys=("already-synced",),
+        ),
+    )
+
+    body, status, _headers = main.sync_weight_http(FakeRequest())
+
+    assert status == 502
+    assert json.loads(body)["keepalive_failed"] is True
 
 
 def test_sync_weight_http_reports_sync_failure(monkeypatch: pytest.MonkeyPatch) -> None:
