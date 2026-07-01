@@ -215,6 +215,21 @@
 - Added manual Garmin destination suspension state. Upload or keepalive failure
   marks Garmin suspended; future runs return a skipped/suspended result without
   fetching source data or touching Garmin until the state entry is removed.
+- Committed the Garmin token refresh hardening work as
+  `0ca5424 Harden Garmin token refresh handling` and merged it into `main` as
+  `10169a8 Merge Garmin token refresh hardening`.
+- Added local Garmin token cache as Secret Manager secret
+  `garmin-tokens-json` version 2, deployed Cloud Function revision
+  `healthsync-weight-sync-00007-bek`, and configured the function to read
+  `GARMIN_TOKENS_JSON` from `latest` plus persist refreshed tokens back through
+  `GARMIN_TOKENS_SECRET_ID=garmin-tokens-json`.
+- Granted `healthsync-runner@healthsync-84gaec.iam.gserviceaccount.com`
+  Secret Manager read and secret-version-add permissions on
+  `garmin-tokens-json`.
+- Manually triggered the deployed scheduler job once after deployment. The run
+  succeeded with one fetched measurement, one Garmin upload, no keepalive
+  failure, and no destination suspension. GCS sync state then contained two
+  synced weight keys and an empty `destination_suspensions` object.
 
 ### Open Questions
 
