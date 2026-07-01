@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import json
 
 import pytest
@@ -30,6 +30,18 @@ class RecordingWeightDestination:
 
     def upload_weight_measurement(self, measurement: WeightMeasurement) -> None:
         self.uploaded.append(measurement)
+
+
+class KeepaliveWeightDestination(RecordingWeightDestination):
+    def __init__(self, *, fail_keepalive: bool = False) -> None:
+        super().__init__()
+        self.keepalive_count = 0
+        self.fail_keepalive = fail_keepalive
+
+    def keepalive(self) -> None:
+        self.keepalive_count += 1
+        if self.fail_keepalive:
+            raise RuntimeError("provider auth failed")
 
 
 class FailingDestination:
@@ -66,7 +78,117 @@ def test_sync_engine_skips_duplicate_measurements(tmp_path) -> None:
     assert result.fetched_count == 1
     assert result.uploaded_count == 0
     assert result.skipped_count == 1
+    assert result.keepalive_count == 0
+    assert result.keepalive_failed is False
     assert result.skipped_sync_keys == (measurement.sync_key,)
+
+
+def test_sync_engine_keeps_destination_alive_when_everything_is_skipped(
+    tmp_path,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    measurement = make_measurement()
+    state = FileSyncState(tmp_path / "sync_state.json")
+    state.mark_synced(measurement.sync_key)
+    destination = KeepaliveWeightDestination()
+
+    with caplog.at_level("INFO", logger="healthsync.sync_engine"):
+        result = WeightSyncEngine(
+            FakeWeightSource([measurement]),
+            destination,
+            sync_state=state,
+        ).sync_weight_measurements()
+
+    assert destination.uploaded == []
+    assert destination.keepalive_count == 1
+    assert result.uploaded_count == 0
+    assert result.skipped_count == 1
+    assert result.keepalive_count == 1
+    assert result.keepalive_failed is False
+    assert "Keeping destination session alive after duplicate-only sync" in caplog.text
+    assert "Destination keepalive succeeded" in caplog.text
+
+
+def test_sync_engine_reports_keepalive_failure_without_marking_upload_failed(
+    tmp_path,
+) -> None:
+    measurement = make_measurement()
+    state = FileSyncState(tmp_path / "sync_state.json")
+    state.mark_synced(measurement.sync_key)
+    destination = KeepaliveWeightDestination(fail_keepalive=True)
+
+    result = WeightSyncEngine(
+        FakeWeightSource([measurement]),
+        destination,
+        sync_state=state,
+    ).sync_weight_measurements()
+
+    assert destination.keepalive_count == 1
+    assert result.failed_count == 0
+    assert result.keepalive_count == 0
+    assert result.keepalive_failed is True
+    assert state.get_destination_suspension("garmin") is None
+
+
+def test_sync_engine_marks_destination_suspended_after_keepalive_failure(
+    tmp_path,
+) -> None:
+    measurement = make_measurement()
+    state = FileSyncState(tmp_path / "sync_state.json")
+    state.mark_synced(measurement.sync_key)
+    destination = KeepaliveWeightDestination(fail_keepalive=True)
+
+    result = WeightSyncEngine(
+        FakeWeightSource([measurement]),
+        destination,
+        sync_state=state,
+        destination_name="garmin",
+    ).sync_weight_measurements()
+
+    suspension = state.get_destination_suspension("garmin")
+    assert result.keepalive_failed is True
+    assert suspension is not None
+    assert suspension.manual is True
+    assert suspension.reason == "keepalive failed"
+
+
+def test_sync_engine_skips_provider_calls_when_destination_suspended(tmp_path) -> None:
+    measurement = make_measurement()
+    state = FileSyncState(tmp_path / "sync_state.json")
+    state.mark_destination_suspended("garmin", reason="previous 429")
+    destination = KeepaliveWeightDestination()
+
+    result = WeightSyncEngine(
+        FakeWeightSource([measurement]),
+        destination,
+        sync_state=state,
+        destination_name="garmin",
+    ).sync_weight_measurements()
+
+    assert destination.uploaded == []
+    assert destination.keepalive_count == 0
+    assert result.fetched_count == 0
+    assert result.uploaded_count == 0
+    assert result.destination_suspended is True
+    assert result.destination_suspension_reason == "previous 429"
+
+
+def test_sync_engine_does_not_keepalive_after_real_upload(tmp_path) -> None:
+    measurement = make_measurement()
+    state = FileSyncState(tmp_path / "sync_state.json")
+    destination = KeepaliveWeightDestination()
+
+    result = WeightSyncEngine(
+        FakeWeightSource([measurement]),
+        destination,
+        sync_state=state,
+    ).sync_weight_measurements()
+
+    assert destination.uploaded == [measurement]
+    assert destination.keepalive_count == 0
+    assert result.uploaded_count == 1
+    assert result.keepalive_count == 0
+    assert result.keepalive_failed is False
 
 
 def test_failed_upload_is_not_marked_synced(tmp_path) -> None:
@@ -87,6 +209,25 @@ def test_failed_upload_is_not_marked_synced(tmp_path) -> None:
     assert result.failed_sync_keys == (measurement.sync_key,)
 
 
+def test_sync_engine_marks_destination_suspended_after_upload_failure(tmp_path) -> None:
+    measurement = make_measurement()
+    state = FileSyncState(tmp_path / "sync_state.json")
+    destination = FailingDestination()
+
+    result = WeightSyncEngine(
+        FakeWeightSource([measurement]),
+        destination,
+        sync_state=state,
+        destination_name="garmin",
+    ).sync_weight_measurements()
+
+    suspension = state.get_destination_suspension("garmin")
+    assert result.failed_count == 1
+    assert suspension is not None
+    assert suspension.manual is True
+    assert suspension.reason == "upload failed"
+
+
 def test_file_sync_state_loads_and_saves_state(tmp_path) -> None:
     measurement = make_measurement()
     state_path = tmp_path / "nested" / "sync_state.json"
@@ -98,6 +239,48 @@ def test_file_sync_state_loads_and_saves_state(tmp_path) -> None:
     assert json.loads(state_path.read_text(encoding="utf-8")) == {
         "synced_weight_keys": [measurement.sync_key]
     }
+
+
+def test_file_sync_state_saves_manual_destination_suspension(tmp_path) -> None:
+    state_path = tmp_path / "sync_state.json"
+    state = FileSyncState(state_path)
+
+    state.mark_destination_suspended("Garmin", reason="previous 429")
+    reloaded = FileSyncState(state_path)
+    suspension = reloaded.get_destination_suspension("garmin")
+
+    assert suspension is not None
+    assert suspension.manual is True
+    assert suspension.suspended_until is None
+    assert suspension.reason == "previous 429"
+    assert json.loads(state_path.read_text(encoding="utf-8"))[
+        "destination_suspensions"
+    ] == {
+        "garmin": {
+            "manual": True,
+            "reason": "previous 429",
+        }
+    }
+
+
+def test_file_sync_state_expiring_destination_suspension(tmp_path) -> None:
+    state = FileSyncState(tmp_path / "sync_state.json")
+    now = datetime(2026, 7, 1, 12, 0, tzinfo=timezone.utc)
+
+    state.mark_destination_suspended(
+        "garmin",
+        until=now + timedelta(hours=1),
+        reason="temporary",
+    )
+
+    assert state.get_destination_suspension("garmin", now=now) is not None
+    assert (
+        state.get_destination_suspension(
+            "garmin",
+            now=now + timedelta(hours=2),
+        )
+        is None
+    )
 
 
 def test_file_sync_state_loads_utf8_bom_file(tmp_path) -> None:

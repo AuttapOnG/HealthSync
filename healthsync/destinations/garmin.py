@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date
 import json
+import logging
 import os
 from pathlib import Path
 from typing import Any, Callable
@@ -15,8 +16,11 @@ from healthsync.models import WeightMeasurement
 DEFAULT_GARMIN_SESSION_DIR = Path(".local/garmin-session")
 GARMIN_TOKENS_JSON_ENV_VAR = "GARMIN_TOKENS_JSON"
 GARMIN_TOKENS_FILE_NAME = "garmin_tokens.json"
+GARMIN_TOKENS_SECRET_ID_ENV_VAR = "GARMIN_TOKENS_SECRET_ID"
+GARMIN_TOKENS_SECRET_PROJECT_ENV_VAR = "GARMIN_TOKENS_SECRET_PROJECT"
 GARMIN_VERIFY_UPLOADS_ENV_VAR = "GARMIN_VERIFY_UPLOADS"
 WEIGHT_MATCH_TOLERANCE_KG = 0.01
+LOGGER = logging.getLogger(__name__)
 
 
 class GarminDestinationError(RuntimeError):
@@ -47,6 +51,8 @@ class GarminConfig:
     password: str | None = None
     session_dir: str | Path = DEFAULT_GARMIN_SESSION_DIR
     tokens_json: str | None = None
+    tokens_secret_id: str | None = None
+    tokens_secret_project: str | None = None
     verify_uploads: bool = False
 
     @classmethod
@@ -58,6 +64,8 @@ class GarminConfig:
             password=_optional_env("GARMIN_PASSWORD"),
             session_dir=os.environ.get("GARMIN_SESSION_DIR", str(DEFAULT_GARMIN_SESSION_DIR)),
             tokens_json=_optional_env(GARMIN_TOKENS_JSON_ENV_VAR),
+            tokens_secret_id=_optional_env(GARMIN_TOKENS_SECRET_ID_ENV_VAR),
+            tokens_secret_project=_optional_env(GARMIN_TOKENS_SECRET_PROJECT_ENV_VAR),
             verify_uploads=_optional_bool_env(GARMIN_VERIFY_UPLOADS_ENV_VAR, default=False),
         )
 
@@ -65,6 +73,8 @@ class GarminConfig:
         email = _clean_optional(self.email)
         password = _clean_optional(self.password)
         tokens_json = _clean_optional(self.tokens_json)
+        tokens_secret_id = _clean_optional(self.tokens_secret_id)
+        tokens_secret_project = _clean_optional(self.tokens_secret_project)
         session_dir = Path(self.session_dir)
 
         if not str(session_dir).strip():
@@ -77,11 +87,18 @@ class GarminConfig:
             raise GarminConfigError("verify_uploads must be a bool")
         if tokens_json is not None:
             _validate_tokens_json(tokens_json)
+        if tokens_secret_project is not None and tokens_secret_id is None:
+            raise GarminConfigError(
+                f"{GARMIN_TOKENS_SECRET_PROJECT_ENV_VAR} requires "
+                f"{GARMIN_TOKENS_SECRET_ID_ENV_VAR}"
+            )
 
         object.__setattr__(self, "email", email)
         object.__setattr__(self, "password", password)
         object.__setattr__(self, "session_dir", session_dir)
         object.__setattr__(self, "tokens_json", tokens_json)
+        object.__setattr__(self, "tokens_secret_id", tokens_secret_id)
+        object.__setattr__(self, "tokens_secret_project", tokens_secret_project)
 
     @property
     def has_credentials(self) -> bool:
@@ -136,6 +153,19 @@ class GarminWeightDestination:
         if self._config.verify_uploads:
             verify_uploaded_weight(client, measurement)
 
+    def keepalive(self) -> None:
+        """Make one read-only Garmin request so cached tokens can refresh."""
+
+        client = self._authenticated_client()
+        try:
+            if hasattr(client, "get_user_profile"):
+                client.get_user_profile()
+            else:
+                read_weight_records_for_date(client, date.today())
+        except Exception as exc:
+            raise GarminAuthenticationError(f"Garmin keepalive failed: {exc}") from exc
+        persist_session_tokens(self._config)
+
     def _authenticated_client(self) -> Any:
         if self._client is not None:
             return self._client
@@ -146,6 +176,7 @@ class GarminWeightDestination:
         try:
             client = self._client_factory()
             client.login(tokenstore)
+            persist_session_tokens(self._config)
             self._client = client
             return client
         except Exception:
@@ -168,6 +199,7 @@ class GarminWeightDestination:
         except Exception as exc:
             raise GarminAuthenticationError(f"Garmin authentication failed: {exc}") from exc
 
+        persist_session_tokens(self._config)
         self._client = client
         return client
 
@@ -180,7 +212,76 @@ def hydrate_session_tokens(session_dir: Path, tokens_json: str | None) -> None:
 
     session_dir.mkdir(parents=True, exist_ok=True)
     token_path = session_dir / GARMIN_TOKENS_FILE_NAME
+    if token_path.exists():
+        return
     token_path.write_text(tokens_json, encoding="utf-8")
+
+
+def persist_session_tokens(config: GarminConfig) -> None:
+    """Persist a refreshed Garmin token cache to Secret Manager when configured."""
+
+    if config.tokens_secret_id is None:
+        return
+
+    token_path = config.session_dir / GARMIN_TOKENS_FILE_NAME
+    try:
+        tokens_json = token_path.read_text(encoding="utf-8")
+        _validate_tokens_json(tokens_json)
+        persist_tokens_json_to_secret_manager(
+            tokens_json,
+            secret_id=config.tokens_secret_id,
+            project_id=config.tokens_secret_project,
+        )
+    except Exception as exc:
+        LOGGER.warning("Failed to persist refreshed Garmin session tokens: %s", exc)
+
+
+def persist_tokens_json_to_secret_manager(
+    tokens_json: str,
+    *,
+    secret_id: str,
+    project_id: str | None = None,
+) -> None:
+    """Add a new Secret Manager version when Garmin token JSON changed."""
+
+    _validate_tokens_json(tokens_json)
+
+    try:
+        from google.api_core.exceptions import NotFound
+        from google.auth import default as google_auth_default
+        from google.cloud import secretmanager
+    except ImportError as exc:
+        raise GarminConfigError(
+            "google-cloud-secret-manager is not installed; install runtime dependencies"
+        ) from exc
+
+    resolved_project_id = project_id
+    if resolved_project_id is None:
+        _credentials, resolved_project_id = google_auth_default()
+    if resolved_project_id is None:
+        raise GarminConfigError(
+            f"{GARMIN_TOKENS_SECRET_PROJECT_ENV_VAR} is required when the Google "
+            "Cloud project cannot be inferred"
+        )
+
+    client = secretmanager.SecretManagerServiceClient()
+    secret_name = f"projects/{resolved_project_id}/secrets/{secret_id}"
+    latest_name = f"{secret_name}/versions/latest"
+
+    try:
+        latest = client.access_secret_version(request={"name": latest_name})
+        latest_tokens_json = latest.payload.data.decode("utf-8")
+        if latest_tokens_json == tokens_json:
+            return
+    except NotFound:
+        pass
+
+    client.add_secret_version(
+        request={
+            "parent": secret_name,
+            "payload": {"data": tokens_json.encode("utf-8")},
+        }
+    )
 
 
 def build_upload_mapping(measurement: WeightMeasurement) -> GarminUploadMapping:
@@ -333,6 +434,8 @@ __all__ = [
     "DEFAULT_GARMIN_SESSION_DIR",
     "GARMIN_TOKENS_FILE_NAME",
     "GARMIN_TOKENS_JSON_ENV_VAR",
+    "GARMIN_TOKENS_SECRET_ID_ENV_VAR",
+    "GARMIN_TOKENS_SECRET_PROJECT_ENV_VAR",
     "GarminAuthenticationError",
     "GarminConfig",
     "GarminConfigError",
@@ -344,6 +447,8 @@ __all__ = [
     "build_upload_mapping",
     "garmin_record_weight_kg",
     "hydrate_session_tokens",
+    "persist_session_tokens",
+    "persist_tokens_json_to_secret_manager",
     "read_weight_records_for_date",
     "verify_uploaded_weight",
 ]

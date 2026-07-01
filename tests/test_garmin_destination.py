@@ -4,6 +4,8 @@ import pytest
 
 from healthsync.destinations.garmin import (
     GARMIN_TOKENS_FILE_NAME,
+    GARMIN_TOKENS_SECRET_ID_ENV_VAR,
+    GARMIN_TOKENS_SECRET_PROJECT_ENV_VAR,
     GarminAuthenticationError,
     GarminConfig,
     GarminConfigError,
@@ -13,6 +15,7 @@ from healthsync.destinations.garmin import (
     build_upload_mapping,
     garmin_record_weight_kg,
     hydrate_session_tokens,
+    persist_session_tokens,
 )
 from healthsync.models import WeightMeasurement
 from healthsync.state import FileSyncState
@@ -74,6 +77,12 @@ class FakeGarminClient:
         if self.read_error is not None:
             raise self.read_error
         return self.weigh_ins
+
+    def get_user_profile(self) -> dict:
+        self.calls.append(("get_user_profile", {}))
+        if self.read_error is not None:
+            raise self.read_error
+        return {"displayName": "test-user"}
 
 
 class FakeWeightSource:
@@ -144,6 +153,21 @@ def test_config_reads_tokens_json(monkeypatch: pytest.MonkeyPatch) -> None:
     assert config.tokens_json == '{"oauth1_token": "token"}'
 
 
+def test_config_reads_token_secret_settings(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv(GARMIN_TOKENS_SECRET_ID_ENV_VAR, "garmin-tokens")
+    monkeypatch.setenv(GARMIN_TOKENS_SECRET_PROJECT_ENV_VAR, "healthsync-test")
+
+    config = GarminConfig.from_env()
+
+    assert config.tokens_secret_id == "garmin-tokens"
+    assert config.tokens_secret_project == "healthsync-test"
+
+
+def test_config_rejects_secret_project_without_secret_id() -> None:
+    with pytest.raises(GarminConfigError, match="GARMIN_TOKENS_SECRET_PROJECT"):
+        GarminConfig(tokens_secret_project="healthsync-test")
+
+
 def test_config_rejects_invalid_tokens_json() -> None:
     with pytest.raises(GarminConfigError, match="GARMIN_TOKENS_JSON must be valid JSON"):
         GarminConfig(tokens_json="not-json")
@@ -157,6 +181,131 @@ def test_hydrates_session_tokens(tmp_path) -> None:
     assert (tmp_path / "session" / GARMIN_TOKENS_FILE_NAME).read_text(
         encoding="utf-8"
     ) == tokens_json
+
+
+def test_hydrate_session_tokens_does_not_overwrite_existing_cache(tmp_path) -> None:
+    session_dir = tmp_path / "session"
+    session_dir.mkdir()
+    token_path = session_dir / GARMIN_TOKENS_FILE_NAME
+    token_path.write_text('{"oauth1_token": "fresh"}', encoding="utf-8")
+
+    hydrate_session_tokens(session_dir, '{"oauth1_token": "stale"}')
+
+    assert token_path.read_text(encoding="utf-8") == '{"oauth1_token": "fresh"}'
+
+
+def test_persist_session_tokens_writes_configured_secret(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    session_dir = tmp_path / "session"
+    session_dir.mkdir()
+    token_path = session_dir / GARMIN_TOKENS_FILE_NAME
+    token_path.write_text('{"oauth1_token": "fresh"}', encoding="utf-8")
+    calls: list[dict[str, str | None]] = []
+
+    def fake_persist(
+        tokens_json: str,
+        *,
+        secret_id: str,
+        project_id: str | None = None,
+    ) -> None:
+        calls.append(
+            {
+                "tokens_json": tokens_json,
+                "secret_id": secret_id,
+                "project_id": project_id,
+            }
+        )
+
+    monkeypatch.setattr(
+        "healthsync.destinations.garmin.persist_tokens_json_to_secret_manager",
+        fake_persist,
+    )
+
+    persist_session_tokens(
+        GarminConfig(
+            session_dir=session_dir,
+            tokens_secret_id="garmin-tokens",
+            tokens_secret_project="healthsync-test",
+        )
+    )
+
+    assert calls == [
+        {
+            "tokens_json": '{"oauth1_token": "fresh"}',
+            "secret_id": "garmin-tokens",
+            "project_id": "healthsync-test",
+        }
+    ]
+
+
+def test_successful_login_persists_session_tokens(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    session_dir = tmp_path / "session"
+    calls: list[tuple[str, dict]] = []
+    persisted: list[GarminConfig] = []
+
+    def factory(**kwargs):
+        session_dir.mkdir(parents=True, exist_ok=True)
+        (session_dir / GARMIN_TOKENS_FILE_NAME).write_text(
+            '{"oauth1_token": "fresh"}',
+            encoding="utf-8",
+        )
+        return FakeGarminClient(calls=calls, **kwargs)
+
+    monkeypatch.setattr(
+        "healthsync.destinations.garmin.persist_session_tokens",
+        lambda config: persisted.append(config),
+    )
+
+    destination = GarminWeightDestination(
+        GarminConfig(
+            session_dir=session_dir,
+            tokens_secret_id="garmin-tokens",
+        ),
+        client_factory=factory,
+    )
+
+    destination.upload_weight_measurement(make_measurement())
+
+    assert len(persisted) == 1
+    assert persisted[0].tokens_secret_id == "garmin-tokens"
+
+
+def test_keepalive_reads_profile_and_persists_session_tokens(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[tuple[str, dict]] = []
+    persisted: list[GarminConfig] = []
+
+    def factory(**kwargs):
+        return FakeGarminClient(calls=calls, **kwargs)
+
+    monkeypatch.setattr(
+        "healthsync.destinations.garmin.persist_session_tokens",
+        lambda config: persisted.append(config),
+    )
+
+    destination = GarminWeightDestination(
+        GarminConfig(
+            session_dir=tmp_path / "session",
+            tokens_secret_id="garmin-tokens",
+        ),
+        client_factory=factory,
+    )
+
+    destination.keepalive()
+
+    assert calls == [
+        ("login", {"tokenstore": str(tmp_path / "session"), "kwargs": {}}),
+        ("get_user_profile", {}),
+    ]
+    assert len(persisted) == 2
+    assert persisted[-1].tokens_secret_id == "garmin-tokens"
 
 
 def test_config_requires_email_and_password_together() -> None:

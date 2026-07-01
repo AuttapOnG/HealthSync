@@ -1,6 +1,6 @@
 """Destination adapter interfaces and implementations."""
 
-from healthsync.destinations.base import WeightDestination
+from healthsync.destinations.base import KeepaliveDestination, WeightDestination
 from healthsync.destinations.dry_run import DryRunWeightDestination
 from healthsync.destinations.garmin import (
     GarminAuthenticationError,
@@ -19,5 +19,6 @@ __all__ = [
     "GarminDestinationError",
     "GarminUploadError",
     "GarminWeightDestination",
+    "KeepaliveDestination",
     "WeightDestination",
 ]

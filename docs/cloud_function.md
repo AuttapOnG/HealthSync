@@ -63,6 +63,8 @@ GARMIN_SESSION_DIR=/tmp/garmin-session
 GARMIN_EMAIL
 GARMIN_PASSWORD
 GARMIN_TOKENS_JSON
+GARMIN_TOKENS_SECRET_ID
+GARMIN_TOKENS_SECRET_PROJECT
 GARMIN_VERIFY_UPLOADS=false
 ```
 
@@ -82,6 +84,27 @@ captured provider responses.
 is enabled. Store the contents of local `.local/garmin-session/garmin_tokens.json`
 in Secret Manager, then inject it as `GARMIN_TOKENS_JSON`. The function writes
 that value to `/tmp/garmin-session/garmin_tokens.json` before Garmin login.
+
+`GARMIN_TOKENS_SECRET_ID` is optional but recommended for unattended scheduled
+runs. When set, HealthSync reads the post-login token cache from
+`GARMIN_SESSION_DIR/garmin_tokens.json` and writes it back to Secret Manager as
+a new version if it changed. Set `GARMIN_TOKENS_SECRET_PROJECT` when the Google
+Cloud project cannot be inferred from application default credentials. The
+function service account needs permission to read the latest version and add a
+new version on that secret.
+
+When a scheduled Garmin run fetches only measurements that were already synced,
+HealthSync makes one read-only Garmin keepalive request instead of posting a
+duplicate weight. This gives `python-garminconnect` a chance to refresh cached
+DI tokens and lets HealthSync persist the refreshed token cache when Secret
+Manager persistence is configured.
+
+If a Garmin upload or keepalive request fails, HealthSync stores a manual
+Garmin suspension in the configured sync state. Later scheduled runs skip Garmin
+without fetching source data or touching Garmin again until the suspension is
+manually removed from state. To resume, remove the `garmin` entry under
+`destination_suspensions` from the local state file or the GCS state object
+after refreshing/fixing Garmin credentials.
 
 ## State Backend
 
