@@ -386,7 +386,7 @@ def _required_value(value: str, name: str) -> str:
 
 def _default_storage_client() -> Any:
     try:
-        from google.cloud import storage
+        import google.cloud.storage as storage
     except ImportError as exc:
         raise RuntimeError(
             "google-cloud-storage is not installed; install runtime dependencies"

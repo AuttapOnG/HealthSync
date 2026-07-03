@@ -2,6 +2,13 @@
 
 Agents must read this folder before changing product behavior, code, tests, or project documentation.
 
+## Environment Bootstrap
+
+Run `bash init.sh` from the repo root to create/update the `.venv` and
+install `requirements.txt`, `requirements-dev.txt`, and
+`requirements-poc.txt`. It is idempotent and never prints or commits
+secrets. See `README.md`'s Setup section and `harness/notes/HS-014-init-sh.md`.
+
 ## Required Read Order
 
 1. `../AGENTS.md`

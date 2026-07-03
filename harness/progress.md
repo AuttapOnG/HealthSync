@@ -9,10 +9,11 @@ live; a Cloud Scheduler job (`healthsync-weight-sync-every-4h`, cron
 `0 */4 * * *`, `Asia/Bangkok`) triggers it, GCS holds sync state, and Garmin
 session tokens are persisted through Secret Manager. The current branch is
 `docs/harness-advancement`, which just completed the harness memory refactor
-into per-feature notes (HS-012). Next work: continue the harness-advancement
-batch (verification gate, `init.sh`), monitor scheduled runs for Zepp token
-expiry or Garmin auth changes, and decide whether to remove the still-present
-`GARMIN_EMAIL`/`GARMIN_PASSWORD` cloud fallback secrets.
+into per-feature notes (HS-012), added the ruff/mypy/CI verification gate
+(HS-013), and added the `init.sh` reproducible env bootstrap (HS-014),
+completing the harness-advancement batch. Next work: monitor scheduled runs
+for Zepp token expiry or Garmin auth changes, and decide whether to remove
+the still-present `GARMIN_EMAIL`/`GARMIN_PASSWORD` cloud fallback secrets.
 
 ## Feature index
 
@@ -30,6 +31,8 @@ expiry or Garmin auth changes, and decide whether to remove the still-present
 | HS-010 | Run Garmin Connect weight destination POC | done | notes/HS-010-garmin-poc.md |
 | HS-011 | Harden Garmin unattended auth | done | notes/HS-011-harden-garmin-auth.md |
 | HS-012 | Per-feature harness memory refactor | done | notes/HS-012-per-feature-memory.md |
+| HS-013 | Add ruff/mypy verification gate and CI | done | notes/HS-013-verification-gate.md |
+| HS-014 | Add reproducible env bootstrap (init.sh) | done | notes/HS-014-init-sh.md |
 
 ## Cross-cutting decisions & events
 

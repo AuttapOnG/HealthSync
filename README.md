@@ -32,6 +32,21 @@ Initial source strategy:
 - Zepp Life user-owned app session
 - No file, CSV, or export-based source fallback in v0.1
 
+## Setup
+
+The fastest way to get a working environment is the bootstrap script:
+
+```bash
+bash init.sh
+```
+
+`init.sh` is idempotent (safe to re-run), creates a `.venv`, upgrades pip, and
+installs `requirements.txt`, `requirements-dev.txt`, and
+`requirements-poc.txt`, then prints next steps. It never prints or commits
+secrets. If the POC git-based dependency in `requirements-poc.txt` cannot be
+resolved in a network-restricted environment, the runtime and dev installs
+still complete; see `harness/notes/HS-014-init-sh.md` for details.
+
 ## Local Weight Sync
 
 Install runtime dependencies for the local runner or Cloud Functions entrypoint:

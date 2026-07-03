@@ -185,6 +185,21 @@
         "No auto-fix or reformat changes sync_key output or Garmin upload payload/timestamp behavior.",
         "89 existing tests continue to pass."
       ]
+    },
+    {
+      "id": "HS-014",
+      "title": "Add reproducible env bootstrap (init.sh)",
+      "status": "done",
+      "priority": "medium",
+      "description": "Add an idempotent init.sh that creates a .venv, upgrades pip, installs runtime/dev/poc requirements, and prints next steps, so any agent or contributor can reproduce a working environment with one command.",
+      "acceptance_criteria": [
+        "init.sh is executable, idempotent (safe to re-run), and never prints or commits secrets.",
+        "bash init.sh creates .venv, installs requirements.txt, requirements-dev.txt, and requirements-poc.txt, and prints next steps.",
+        ".venv/bin/python -m pytest -q reports 89 passed.",
+        ".venv/ does not appear in git status --short (already gitignored).",
+        "README.md documents init.sh as the setup entrypoint; harness/README.md references it as the env bootstrap.",
+        "ruff check ., ruff format --check ., and mypy healthsync continue to pass."
+      ]
     }
   ]
 }
