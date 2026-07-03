@@ -157,6 +157,19 @@
         "Configuration and manual recovery steps are documented without committing secrets.",
         "Tests cover token persistence, keepalive behavior, manual suspension state, and suspended-run skipping."
       ]
+    },
+    {
+      "id": "HS-012",
+      "title": "Per-feature harness memory refactor",
+      "status": "done",
+      "priority": "medium",
+      "description": "Split harness memory into per-feature note files plus a slim, bounded index so agents only load what a given feature needs.",
+      "acceptance_criteria": [
+        "harness/notes/ contains one note file per feature in feature_list.json.",
+        "harness/progress.md contains exactly the three sections (Current State, Feature index, Cross-cutting decisions & events) and no per-feature day-by-day detail.",
+        "Every decision/event from the old progress.md is present either in a feature note or in the cross-cutting log (no information lost).",
+        "harness/README.md and AGENTS.md document the new update discipline."
+      ]
     }
   ]
 }

@@ -80,7 +80,7 @@ A feature is done only when:
 
 - It satisfies the acceptance criteria in `harness/feature_list.json`.
 - It does not break existing tests.
-- It updates `harness/progress.md` with what changed and any remaining risk.
+- It updates that feature's `harness/notes/HS-XXX-*.md` with what changed and any remaining risk; only cross-feature decisions, deployments, and project-wide policy go in `harness/progress.md`.
 - Any new configuration is documented in `.env.example` or README.
 - The work is ready for a focused commit or already committed at the user's request.
 

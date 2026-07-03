@@ -13,12 +13,15 @@ Do not implement from memory. If files conflict, prefer the newest decision in `
 
 ## Files
 
-- `progress.md`: running decisions, completed work, blockers, and next steps.
+- `progress.md`: Current State, Feature index, and the cross-cutting decisions/events log. It no longer holds per-feature day-by-day detail.
+- `notes/HS-XXX-<slug>.md`: per-feature decisions, completed work, and remaining risk. One file per feature in `feature_list.json`.
 - `feature_list.json`: implementation queue, status, priority, and acceptance criteria.
 
 ## Update Rules
 
-- Update `progress.md` whenever a meaningful implementation decision or blocker appears.
+- Record feature work in that feature's `harness/notes/HS-XXX-*.md`, not in `progress.md`.
+- Put only cross-feature decisions, deployments, and project-wide policy (e.g. timezone normalization, circuit-breaker suspension, secret/credential policy) in `progress.md`'s Cross-cutting decisions & events section.
+- Update the Current State paragraph and Feature index in `progress.md` whenever a feature's status changes.
 - Update `feature_list.json` when a feature changes status.
 - Keep acceptance criteria concrete enough for another agent to verify.
 
