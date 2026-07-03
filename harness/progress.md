@@ -115,3 +115,20 @@ the still-present `GARMIN_EMAIL`/`GARMIN_PASSWORD` cloud fallback secrets.
   fetched 1, skipped 1 as duplicate, uploaded 0, keepalive succeeded, no
   suspension. The skipped sync key matched a pre-deploy key, confirming the
   timezone fix preserved existing cloud sync keys (no duplicate re-upload).
+
+- **Deployment 2026-07-03 (harness advancement):** Deployed the merged
+  harness-advancement work (HS-012 per-feature memory, HS-013 ruff/mypy/CI
+  gate, HS-014 `init.sh`) to Cloud Function `healthsync-weight-sync`
+  (us-central1, healthsync-84gaec) from local `main` at `7278d55`. The only
+  runtime-code changes were behavior-preserving (ruff reformat,
+  `timezone.utc`→`UTC` alias, mypy annotations, and a runtime-identical
+  `google.cloud.storage` import form in `state.py`); sync keys and Garmin
+  payloads are byte-unchanged. Source-only redeploy preserving existing env
+  vars, secrets, service account, memory, and timeout. New revision
+  `healthsync-weight-sync-00009-ced`, state ACTIVE, update time
+  2026-07-03T08:44:45Z. Pre-deploy check per the circuit-breaker rule: GCS
+  sync state had no `destination_suspensions` and 5 synced keys. Triggered
+  the scheduler job once after deployment. Result: HTTP 200, uploaded 1, no
+  keepalive, `destination_suspended: false`. Added `.superpowers/` and
+  `docs/superpowers/` to `.gcloudignore` so agent scaffolding is not shipped
+  to the function.

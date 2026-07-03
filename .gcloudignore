@@ -19,3 +19,7 @@ __pycache__/
 data/sync_state.json
 *.log
 
+# Agent-personal scaffolding — never ship to the function
+.superpowers/
+docs/superpowers/
+
