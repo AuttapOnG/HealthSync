@@ -302,3 +302,19 @@
   that wall time as-is; acceptable for now.
 - Tests: 89 passed, including new tests for naive-vs-aware key equality,
   UTC epoch parsing, and aware-to-naive-UTC Garmin timestamps.
+
+### Deployment (2026-07-03)
+
+- Deployed the merged hardening + timezone work to Cloud Function
+  `healthsync-weight-sync` (us-central1, healthsync-84gaec) from local `main`
+  at `e57a8d4`. Function state ACTIVE, update time 2026-07-03T03:18:18Z.
+- Pre-deploy check per the new circuit-breaker rule: GCS sync state had no
+  `destination_suspensions` and 4 synced keys.
+- Manually triggered the scheduler job once after deployment. Result: HTTP
+  200, fetched 1, skipped 1 as duplicate, uploaded 0, keepalive succeeded, no
+  suspension. The skipped sync key matched a pre-deploy key, confirming the
+  timezone fix preserved existing cloud sync keys (no duplicate re-upload).
+- Open policy mismatch: the cloud function still injects `GARMIN_EMAIL` and
+  `GARMIN_PASSWORD` secrets, so the email+password fallback remains possible
+  in cloud. The user chose to keep them for now; removing them is a candidate
+  follow-up to enforce token-only cloud login.
