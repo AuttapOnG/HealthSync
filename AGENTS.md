@@ -72,6 +72,7 @@ python -m pytest
 python -m compileall healthsync
 ruff check .
 ruff format --check .
+mypy healthsync
 ```
 
 ## Definition Of Done

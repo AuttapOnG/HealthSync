@@ -9,7 +9,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from healthsync.models import WeightMeasurement
 
@@ -108,6 +108,18 @@ class GarminConfig:
     def has_credentials(self) -> bool:
         return self.email is not None and self.password is not None
 
+    @property
+    def session_dir_path(self) -> Path:
+        """Return ``session_dir`` as a ``Path``.
+
+        ``session_dir`` is declared as ``str | Path`` to accept environment
+        strings at construction time, but ``__post_init__`` always
+        normalizes it to a ``Path`` before this property (or any other
+        code) can observe it.
+        """
+
+        return cast(Path, self.session_dir)
+
 
 @dataclass(frozen=True, slots=True)
 class GarminUploadMapping:
@@ -175,7 +187,7 @@ class GarminWeightDestination:
             return self._client
 
         tokenstore = str(self._config.session_dir)
-        hydrate_session_tokens(self._config.session_dir, self._config.tokens_json)
+        hydrate_session_tokens(self._config.session_dir_path, self._config.tokens_json)
 
         try:
             client = self._client_factory()
@@ -193,7 +205,7 @@ class GarminWeightDestination:
                 "are not configured"
             ) from stored_session_error
 
-        self._config.session_dir.mkdir(parents=True, exist_ok=True)
+        self._config.session_dir_path.mkdir(parents=True, exist_ok=True)
         try:
             client = self._client_factory(
                 email=self._config.email,
@@ -230,7 +242,7 @@ def persist_session_tokens(config: GarminConfig) -> None:
     if config.tokens_secret_id is None:
         return
 
-    token_path = config.session_dir / GARMIN_TOKENS_FILE_NAME
+    token_path = config.session_dir_path / GARMIN_TOKENS_FILE_NAME
     try:
         tokens_json = token_path.read_text(encoding="utf-8")
         _validate_tokens_json(tokens_json)
@@ -382,10 +394,12 @@ def garmin_record_weight_kg(record: dict[str, Any]) -> float | None:
 
 def _iter_weight_record_dicts(value: Any) -> list[dict[str, Any]]:
     if isinstance(value, dict):
-        records = [value] if "weight" in value or "weightInGrams" in value else []
+        dict_records: list[dict[str, Any]] = (
+            [value] if "weight" in value or "weightInGrams" in value else []
+        )
         for child in value.values():
-            records.extend(_iter_weight_record_dicts(child))
-        return records
+            dict_records.extend(_iter_weight_record_dicts(child))
+        return dict_records
     if isinstance(value, list):
         records: list[dict[str, Any]] = []
         for child in value:

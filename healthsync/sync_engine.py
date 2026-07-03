@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 
 from healthsync.destinations import KeepaliveDestination, WeightDestination
 from healthsync.sources import WeightSource
-from healthsync.state import DestinationSuspensionState, SyncState
+from healthsync.state import DestinationSuspension, DestinationSuspensionState, SyncState
 
 
 @dataclass(frozen=True, slots=True)
@@ -126,7 +126,7 @@ class WeightSyncEngine:
             skipped_sync_keys=tuple(skipped_sync_keys),
         )
 
-    def _active_destination_suspension(self):
+    def _active_destination_suspension(self) -> DestinationSuspension | None:
         if (
             self._destination_name is None
             or self._sync_state is None
