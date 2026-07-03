@@ -12,14 +12,15 @@ import csv
 import io
 import json
 import sys
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Iterable
 from zipfile import ZipFile
 
-
-SAMPLE_PATH = Path(__file__).resolve().parents[1] / "data" / "samples" / "zepp_life_body_sample.csv"
+SAMPLE_PATH = (
+    Path(__file__).resolve().parents[1] / "data" / "samples" / "zepp_life_body_sample.csv"
+)
 
 TIME_COLUMNS = ("time", "date", "datetime", "timestamp", "measured_at", "start_time")
 WEIGHT_COLUMNS = ("weight", "weight_kg", "body_weight", "value")
@@ -97,7 +98,9 @@ def iter_weight_records(input_path: Path) -> Iterable[POCWeightRecord]:
         if not csv_paths:
             raise ValueError(f"No BODY*.csv files found under {input_path}")
         for csv_path in csv_paths:
-            yield from parse_csv_text(csv_path.read_text(encoding="utf-8-sig"), str(csv_path))
+            yield from parse_csv_text(
+                csv_path.read_text(encoding="utf-8-sig"), str(csv_path)
+            )
         return
 
     if input_path.suffix.lower() == ".zip":
@@ -105,7 +108,8 @@ def iter_weight_records(input_path: Path) -> Iterable[POCWeightRecord]:
             body_members = [
                 name
                 for name in export_zip.namelist()
-                if Path(name).name.upper().startswith("BODY") and name.lower().endswith(".csv")
+                if Path(name).name.upper().startswith("BODY")
+                and name.lower().endswith(".csv")
             ]
             if not body_members:
                 raise ValueError(f"No BODY*.csv files found in {input_path}")
@@ -128,8 +132,12 @@ def parse_csv_text(csv_text: str, raw_file: str) -> Iterable[POCWeightRecord]:
     normalized_fields = {normalize_key(field): field for field in reader.fieldnames}
     time_column = first_matching_column(normalized_fields, TIME_COLUMNS)
     weight_column = first_matching_column(normalized_fields, WEIGHT_COLUMNS)
-    fat_column = first_matching_column(normalized_fields, BODY_FAT_COLUMNS, required=False)
-    muscle_column = first_matching_column(normalized_fields, MUSCLE_COLUMNS, required=False)
+    fat_column = first_matching_column(
+        normalized_fields, BODY_FAT_COLUMNS, required=False
+    )
+    muscle_column = first_matching_column(
+        normalized_fields, MUSCLE_COLUMNS, required=False
+    )
 
     for row_number, row in enumerate(reader, start=2):
         measured_at = parse_datetime(row.get(time_column, ""))
@@ -141,7 +149,9 @@ def parse_csv_text(csv_text: str, raw_file: str) -> Iterable[POCWeightRecord]:
             measured_at=measured_at,
             weight_kg=weight_kg,
             body_fat_percent=parse_float(row.get(fat_column, "")) if fat_column else None,
-            muscle_mass_kg=parse_float(row.get(muscle_column, "")) if muscle_column else None,
+            muscle_mass_kg=parse_float(row.get(muscle_column, ""))
+            if muscle_column
+            else None,
             raw_file=raw_file,
             raw_row_number=row_number,
         )
@@ -159,7 +169,9 @@ def first_matching_column(
     if required:
         available = ", ".join(sorted(normalized_fields))
         expected = ", ".join(candidates)
-        raise KeyError(f"Missing expected column. Expected one of [{expected}], got [{available}]")
+        raise KeyError(
+            f"Missing expected column. Expected one of [{expected}], got [{available}]"
+        )
     return None
 
 

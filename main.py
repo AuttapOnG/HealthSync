@@ -12,7 +12,6 @@ from healthsync.sources import ZeppLifeWeightSource
 from healthsync.state import SyncState, build_sync_state_from_env
 from healthsync.sync_engine import WeightSyncEngine, WeightSyncResult
 
-
 DESTINATION_ENV_VAR = "HEALTHSYNC_DESTINATION"
 REAL_UPLOAD_ENV_VAR = "HEALTHSYNC_ALLOW_REAL_UPLOAD"
 LOGGER = logging.getLogger(__name__)

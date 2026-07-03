@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 import logging
+from dataclasses import dataclass, field
 
 from healthsync.destinations import KeepaliveDestination, WeightDestination
-from healthsync.models import WeightMeasurement
 from healthsync.sources import WeightSource
 from healthsync.state import DestinationSuspensionState, SyncState
 

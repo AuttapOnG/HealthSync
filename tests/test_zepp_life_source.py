@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
@@ -169,6 +169,4 @@ def test_epoch_timestamps_parse_as_utc_regardless_of_local_timezone() -> None:
 
     measurements = source.fetch_weight_measurements()
 
-    assert measurements[0].measured_at == datetime(
-        2025, 6, 15, 15, 6, 40, tzinfo=timezone.utc
-    )
+    assert measurements[0].measured_at == datetime(2025, 6, 15, 15, 6, 40, tzinfo=UTC)

@@ -47,7 +47,10 @@ class LoginPOCWeightRecord:
             ),
             "metadata": {
                 "provider": "zepp_life",
-                "path": "GET /users/{user_id}/members/-1/weightRecords or GET /users/{user_id}",
+                "path": (
+                    "GET /users/{user_id}/members/-1/weightRecords or "
+                    "GET /users/{user_id}"
+                ),
                 "raw_keys": sorted(self.raw_record.keys()),
             },
         }
@@ -139,7 +142,9 @@ def load_dotenv(path: Path = Path(".env")) -> None:
 
 def latest_weight_record(payload: Any) -> LoginPOCWeightRecord:
     records = list(iter_record_dicts(payload))
-    parsed = [record for record in (parse_record(raw) for raw in records) if record is not None]
+    parsed = [
+        record for record in (parse_record(raw) for raw in records) if record is not None
+    ]
     if not parsed:
         raise ValueError("No parseable weight records found")
     return max(parsed, key=lambda record: record.measured_at)
@@ -188,7 +193,9 @@ def parse_record(record: dict[str, Any]) -> LoginPOCWeightRecord | None:
     weight_kg = first_float(record, ("weight", "weightKg", "weight_kg", "value"))
     if measured_at is None or weight_kg is None:
         return None
-    return LoginPOCWeightRecord(measured_at=measured_at, weight_kg=weight_kg, raw_record=record)
+    return LoginPOCWeightRecord(
+        measured_at=measured_at, weight_kg=weight_kg, raw_record=record
+    )
 
 
 def first_datetime(record: dict[str, Any], keys: tuple[str, ...]) -> datetime | None:
@@ -212,7 +219,12 @@ def parse_datetime(value: Any) -> datetime | None:
     if not cleaned:
         return None
 
-    for date_format in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M", "%Y/%m/%d %H:%M:%S", "%Y-%m-%d"):
+    for date_format in (
+        "%Y-%m-%d %H:%M:%S",
+        "%Y-%m-%d %H:%M",
+        "%Y/%m/%d %H:%M:%S",
+        "%Y-%m-%d",
+    ):
         try:
             return datetime.strptime(cleaned, date_format)
         except ValueError:

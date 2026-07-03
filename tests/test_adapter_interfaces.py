@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
@@ -11,7 +11,7 @@ from healthsync.sync_engine import WeightSyncEngine
 def make_measurement(weight_kg: float = 72.5) -> WeightMeasurement:
     return WeightMeasurement(
         source="test_source",
-        measured_at=datetime(2026, 6, 27, 9, 30, tzinfo=timezone.utc),
+        measured_at=datetime(2026, 6, 27, 9, 30, tzinfo=UTC),
         weight_kg=weight_kg,
     )
 
@@ -64,7 +64,9 @@ def test_sync_engine_uploads_measurements_through_interfaces() -> None:
     assert result.failed_sync_keys == ()
 
 
-def test_sync_engine_logs_failed_upload_and_stops(caplog: pytest.LogCaptureFixture) -> None:
+def test_sync_engine_logs_failed_upload_and_stops(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
     measurements = [make_measurement(72.5), make_measurement(72.8)]
     source = FakeWeightSource(measurements)
     destination = FailingOnceDestination()

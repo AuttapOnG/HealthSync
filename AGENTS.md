@@ -70,9 +70,9 @@ When code exists, prefer these checks:
 ```powershell
 python -m pytest
 python -m compileall healthsync
+ruff check .
+ruff format --check .
 ```
-
-If a formatter or linter is added later, update this section and use the repo's configured commands.
 
 ## Definition Of Done
 

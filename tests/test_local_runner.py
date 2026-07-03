@@ -24,7 +24,7 @@ def test_runner_uses_file_sync_state_for_garmin(
     sync_state = build_sync_state("garmin")
 
     assert sync_state is not None
-    assert getattr(sync_state, "path") == state_path
+    assert sync_state.path == state_path
 
 
 def test_garmin_destination_requires_env_and_command_confirmation(

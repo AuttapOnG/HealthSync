@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from healthsync.destinations import DryRunWeightDestination, WeightDestination
 from healthsync.models import WeightMeasurement
@@ -8,7 +8,7 @@ from healthsync.sync_engine import WeightSyncEngine
 def make_measurement(weight_kg: float = 72.5) -> WeightMeasurement:
     return WeightMeasurement(
         source="test_source",
-        measured_at=datetime(2026, 6, 27, 9, 30, tzinfo=timezone.utc),
+        measured_at=datetime(2026, 6, 27, 9, 30, tzinfo=UTC),
         weight_kg=weight_kg,
         body_fat_percent=18.2,
     )

@@ -170,6 +170,21 @@
         "Every decision/event from the old progress.md is present either in a feature note or in the cross-cutting log (no information lost).",
         "harness/README.md and AGENTS.md document the new update discipline."
       ]
+    },
+    {
+      "id": "HS-013",
+      "title": "Add ruff/mypy verification gate and CI",
+      "status": "in-progress",
+      "priority": "medium",
+      "description": "Add ruff lint/format, mypy type checking, and a CI workflow that runs both plus pytest on every push, without changing sync-key or Garmin payload behavior.",
+      "acceptance_criteria": [
+        "pyproject.toml configures ruff lint and format for healthsync/, tests/, scripts/, and main.py.",
+        "ruff check . and ruff format --check . pass cleanly.",
+        "mypy is configured and passes (added in a later task).",
+        "A CI workflow runs ruff, mypy, and pytest on every push (added in a later task).",
+        "No auto-fix or reformat changes sync_key output or Garmin upload payload/timestamp behavior.",
+        "89 existing tests continue to pass."
+      ]
     }
   ]
 }

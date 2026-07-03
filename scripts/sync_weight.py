@@ -19,12 +19,14 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from healthsync.destinations import DryRunWeightDestination, GarminWeightDestination
-from healthsync.models import WeightMeasurement
-from healthsync.sources import ZeppLifeWeightSource
-from healthsync.state import FileSyncState, SyncState
-from healthsync.sync_engine import WeightSyncEngine, WeightSyncResult
-
+from healthsync.destinations import (  # noqa: E402
+    DryRunWeightDestination,
+    GarminWeightDestination,
+)
+from healthsync.models import WeightMeasurement  # noqa: E402
+from healthsync.sources import ZeppLifeWeightSource  # noqa: E402
+from healthsync.state import FileSyncState, SyncState  # noqa: E402
+from healthsync.sync_engine import WeightSyncEngine, WeightSyncResult  # noqa: E402
 
 REAL_UPLOAD_ENV_VAR = "HEALTHSYNC_ALLOW_REAL_UPLOAD"
 
@@ -112,12 +114,17 @@ def run_sync(
         ZeppLifeWeightSource.from_env(),
         destination,
         sync_state=sync_state,
-        destination_name="garmin" if isinstance(destination, GarminWeightDestination) else None,
+        destination_name="garmin"
+        if isinstance(destination, GarminWeightDestination)
+        else None,
     ).sync_weight_measurements()
 
 
 def real_upload_allowed(allow_real_upload_flag: bool) -> bool:
-    return allow_real_upload_flag and os.environ.get(REAL_UPLOAD_ENV_VAR, "").lower() == "true"
+    return (
+        allow_real_upload_flag
+        and os.environ.get(REAL_UPLOAD_ENV_VAR, "").lower() == "true"
+    )
 
 
 def measurement_to_dict(measurement: WeightMeasurement) -> dict[str, Any]:

@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from hashlib import sha256
 import json
 import math
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
+from hashlib import sha256
 from typing import Any
 
 
@@ -19,7 +19,7 @@ def _normalize_datetime(value: datetime) -> str:
     # the same sync key regardless of the host timezone or representation.
     normalized = value
     if normalized.tzinfo is not None:
-        normalized = normalized.astimezone(timezone.utc).replace(tzinfo=None)
+        normalized = normalized.astimezone(UTC).replace(tzinfo=None)
 
     return normalized.isoformat(timespec="seconds")
 
@@ -62,7 +62,9 @@ class WeightMeasurement:
 
         _normalize_datetime(self.measured_at)
 
-        if isinstance(self.weight_kg, bool) or not isinstance(self.weight_kg, int | float):
+        if isinstance(self.weight_kg, bool) or not isinstance(
+            self.weight_kg, int | float
+        ):
             raise ValueError("weight_kg must be a number")
         if not math.isfinite(float(self.weight_kg)) or float(self.weight_kg) <= 0:
             raise ValueError("weight_kg must be a positive finite number")

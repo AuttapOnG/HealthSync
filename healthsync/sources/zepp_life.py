@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from datetime import datetime, timezone
 import json
 import os
-from typing import Any, Callable
+from collections.abc import Callable
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote
 from urllib.request import Request, urlopen
@@ -29,7 +30,7 @@ class ZeppLifeConfig:
     use_profile_fallback: bool = True
 
     @classmethod
-    def from_env(cls) -> "ZeppLifeConfig":
+    def from_env(cls) -> ZeppLifeConfig:
         """Build configuration from local environment variables."""
 
         days_value = os.environ.get("ZEPP_DAYS", "30").strip()
@@ -46,7 +47,9 @@ class ZeppLifeConfig:
         )
 
     def __post_init__(self) -> None:
-        host = self.host.strip().removeprefix("https://").removeprefix("http://").strip("/")
+        host = (
+            self.host.strip().removeprefix("https://").removeprefix("http://").strip("/")
+        )
         user_id = self.user_id.strip()
         app_token = self.app_token.strip()
 
@@ -82,7 +85,7 @@ class ZeppLifeWeightSource:
         self._http_get = http_get or _fetch_json
 
     @classmethod
-    def from_env(cls) -> "ZeppLifeWeightSource":
+    def from_env(cls) -> ZeppLifeWeightSource:
         """Create a source adapter using ZEPP_* environment variables."""
 
         return cls(ZeppLifeConfig.from_env())
@@ -254,7 +257,7 @@ def _parse_datetime(value: Any) -> datetime | None:
 
     if isinstance(value, (int, float)):
         timestamp = value / 1000 if value > 10_000_000_000 else value
-        return datetime.fromtimestamp(timestamp, tz=timezone.utc)
+        return datetime.fromtimestamp(timestamp, tz=UTC)
 
     cleaned = str(value).strip()
     if not cleaned:

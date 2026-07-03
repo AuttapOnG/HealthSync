@@ -1,17 +1,21 @@
-from datetime import datetime, timedelta, timezone
 import json
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
 from healthsync.models import WeightMeasurement
-from healthsync.state import CloudStorageSyncState, FileSyncState, build_sync_state_from_env
+from healthsync.state import (
+    CloudStorageSyncState,
+    FileSyncState,
+    build_sync_state_from_env,
+)
 from healthsync.sync_engine import WeightSyncEngine
 
 
 def make_measurement(weight_kg: float = 72.5) -> WeightMeasurement:
     return WeightMeasurement(
         source="test_source",
-        measured_at=datetime(2026, 6, 27, 9, 30, tzinfo=timezone.utc),
+        measured_at=datetime(2026, 6, 27, 9, 30, tzinfo=UTC),
         weight_kg=weight_kg,
     )
 
@@ -284,7 +288,7 @@ def test_file_sync_state_saves_manual_destination_suspension(tmp_path) -> None:
 
 def test_file_sync_state_expiring_destination_suspension(tmp_path) -> None:
     state = FileSyncState(tmp_path / "sync_state.json")
-    now = datetime(2026, 7, 1, 12, 0, tzinfo=timezone.utc)
+    now = datetime(2026, 7, 1, 12, 0, tzinfo=UTC)
 
     state.mark_destination_suspended(
         "garmin",
@@ -318,8 +322,8 @@ def test_file_sync_state_loads_utf8_bom_file(tmp_path) -> None:
 class FakeStorageBlob:
     def __init__(self, text: str | None = None, *, generation: int | None = None) -> None:
         self.text = text
-        self.generation = generation if generation is not None else (
-            1 if text is not None else None
+        self.generation = (
+            generation if generation is not None else (1 if text is not None else None)
         )
         self.uploaded_text: str | None = None
         self.content_type: str | None = None

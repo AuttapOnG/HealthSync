@@ -2,16 +2,16 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from datetime import date, datetime, timezone
 import json
 import logging
 import os
+from collections.abc import Callable
+from dataclasses import dataclass
+from datetime import UTC, date, datetime
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 from healthsync.models import WeightMeasurement
-
 
 DEFAULT_GARMIN_SESSION_DIR = Path(".local/garmin-session")
 GARMIN_TOKENS_JSON_ENV_VAR = "GARMIN_TOKENS_JSON"
@@ -56,17 +56,21 @@ class GarminConfig:
     verify_uploads: bool = False
 
     @classmethod
-    def from_env(cls) -> "GarminConfig":
+    def from_env(cls) -> GarminConfig:
         """Build Garmin configuration from local environment variables."""
 
         return cls(
             email=_optional_env("GARMIN_EMAIL"),
             password=_optional_env("GARMIN_PASSWORD"),
-            session_dir=os.environ.get("GARMIN_SESSION_DIR", str(DEFAULT_GARMIN_SESSION_DIR)),
+            session_dir=os.environ.get(
+                "GARMIN_SESSION_DIR", str(DEFAULT_GARMIN_SESSION_DIR)
+            ),
             tokens_json=_optional_env(GARMIN_TOKENS_JSON_ENV_VAR),
             tokens_secret_id=_optional_env(GARMIN_TOKENS_SECRET_ID_ENV_VAR),
             tokens_secret_project=_optional_env(GARMIN_TOKENS_SECRET_PROJECT_ENV_VAR),
-            verify_uploads=_optional_bool_env(GARMIN_VERIFY_UPLOADS_ENV_VAR, default=False),
+            verify_uploads=_optional_bool_env(
+                GARMIN_VERIFY_UPLOADS_ENV_VAR, default=False
+            ),
         )
 
     def __post_init__(self) -> None:
@@ -133,7 +137,7 @@ class GarminWeightDestination:
         self._client: Any | None = None
 
     @classmethod
-    def from_env(cls) -> "GarminWeightDestination":
+    def from_env(cls) -> GarminWeightDestination:
         """Create a Garmin destination using GARMIN_* environment variables."""
 
         return cls(GarminConfig.from_env())
@@ -181,9 +185,7 @@ class GarminWeightDestination:
             return client
         except Exception as exc:
             stored_session_error = exc
-            LOGGER.warning(
-                "Stored Garmin session login failed: %s", stored_session_error
-            )
+            LOGGER.warning("Stored Garmin session login failed: %s", stored_session_error)
 
         if not self._config.has_credentials:
             raise GarminConfigError(
@@ -200,7 +202,9 @@ class GarminWeightDestination:
             )
             client.login(tokenstore)
         except Exception as exc:
-            raise GarminAuthenticationError(f"Garmin authentication failed: {exc}") from exc
+            raise GarminAuthenticationError(
+                f"Garmin authentication failed: {exc}"
+            ) from exc
 
         persist_session_tokens(self._config)
         self._client = client
@@ -316,7 +320,7 @@ def _garmin_timestamp(value: datetime) -> str:
     """Render a measurement time as naive UTC, the format Garmin expects."""
 
     if value.tzinfo is not None:
-        value = value.astimezone(timezone.utc).replace(tzinfo=None)
+        value = value.astimezone(UTC).replace(tzinfo=None)
     return value.isoformat()
 
 
@@ -330,7 +334,8 @@ def verify_uploaded_weight(client: Any, measurement: WeightMeasurement) -> None:
         raise
     except Exception as exc:
         raise GarminVerificationError(
-            f"Garmin weight verification read failed for {measurement_date.isoformat()}: {exc}"
+            "Garmin weight verification read failed for "
+            f"{measurement_date.isoformat()}: {exc}"
         ) from exc
 
     read_back_weights = [
@@ -402,9 +407,7 @@ def _optional_bool_env(name: str, *, default: bool) -> bool:
         return True
     if normalized in {"0", "false", "no", "off"}:
         return False
-    raise GarminConfigError(
-        f"{name} must be one of true/false, yes/no, on/off, or 1/0"
-    )
+    raise GarminConfigError(f"{name} must be one of true/false, yes/no, on/off, or 1/0")
 
 
 def _clean_optional(value: str | None) -> str | None:
@@ -420,7 +423,9 @@ def _validate_tokens_json(value: str) -> None:
     try:
         raw = json.loads(value)
     except json.JSONDecodeError as exc:
-        raise GarminConfigError(f"{GARMIN_TOKENS_JSON_ENV_VAR} must be valid JSON") from exc
+        raise GarminConfigError(
+            f"{GARMIN_TOKENS_JSON_ENV_VAR} must be valid JSON"
+        ) from exc
 
     if not isinstance(raw, dict):
         raise GarminConfigError(f"{GARMIN_TOKENS_JSON_ENV_VAR} must be a JSON object")

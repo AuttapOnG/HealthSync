@@ -156,4 +156,3 @@ def test_cloud_destination_builds_garmin_when_enabled(
 
 def test_cloud_sync_state_is_disabled_for_dry_run() -> None:
     assert main.build_cloud_sync_state("dry-run") is None
-

@@ -20,7 +20,7 @@ import json
 import os
 import sys
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -28,8 +28,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from healthsync.models import WeightMeasurement
-
+from healthsync.models import WeightMeasurement  # noqa: E402
 
 DEFAULT_SESSION_DIR = ".local/garmin-session"
 
@@ -56,7 +55,9 @@ class GarminWeightMapping:
             "args": self.args,
             "supported_plain_weight_fields": self.supported_plain_weight_fields,
             "supported_body_composition_fields": self.supported_body_composition_fields,
-            "safety": "dry-run; no upload unless --allow-upload and --confirm-weight-kg match",
+            "safety": (
+                "dry-run; no upload unless --allow-upload and --confirm-weight-kg match"
+            ),
         }
 
 
@@ -65,7 +66,7 @@ def main() -> int:
     parser.add_argument("--weight-kg", type=float, default=72.5)
     parser.add_argument(
         "--measured-at",
-        default=datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
+        default=datetime.now(UTC).replace(microsecond=0).isoformat(),
         help="Measurement timestamp, ideally ISO 8601.",
     )
     parser.add_argument("--body-fat-percent", type=float)
@@ -78,7 +79,10 @@ def main() -> int:
     parser.add_argument(
         "--dry-run-only",
         action="store_true",
-        help="Only print mapping and supported fields; skip auth even if credentials exist.",
+        help=(
+            "Only print mapping and supported fields; skip auth even if credentials "
+            "exist."
+        ),
     )
     parser.add_argument(
         "--allow-upload",
@@ -110,22 +114,32 @@ def main() -> int:
         mapping = build_mapping(measurement)
     except ImportError as exc:
         print(f"Garmin POC dependency missing: {exc}", file=sys.stderr)
-        print("Install POC dependencies with: python -m pip install -r requirements-poc.txt", file=sys.stderr)
+        print(
+            "Install POC dependencies with: python -m pip install -r "
+            "requirements-poc.txt",
+            file=sys.stderr,
+        )
         return 2
 
     print(json.dumps(mapping.to_json_dict(), indent=2, sort_keys=True))
 
     should_upload = args.allow_upload or args.confirm_weight_kg is not None
     if args.dry_run_only and (args.check_auth or should_upload):
-        print("--dry-run-only cannot be combined with auth or upload flags.", file=sys.stderr)
+        print(
+            "--dry-run-only cannot be combined with auth or upload flags.",
+            file=sys.stderr,
+        )
         return 2
 
     if args.dry_run_only:
         return 0
 
-    if should_upload and not upload_confirmed(args.weight_kg, args.allow_upload, args.confirm_weight_kg):
+    if should_upload and not upload_confirmed(
+        args.weight_kg, args.allow_upload, args.confirm_weight_kg
+    ):
         print(
-            "Refusing upload: pass --allow-upload and --confirm-weight-kg equal to --weight-kg.",
+            "Refusing upload: pass --allow-upload and --confirm-weight-kg equal to "
+            "--weight-kg.",
             file=sys.stderr,
         )
         return 2
@@ -187,7 +201,8 @@ def login_to_garmin() -> Any:
         )
     except ImportError as exc:
         raise GarminPOCError(
-            "garminconnect is not installed; run python -m pip install -r requirements-poc.txt"
+            "garminconnect is not installed; run python -m pip install -r "
+            "requirements-poc.txt"
         ) from exc
 
     session_dir = Path(
@@ -201,7 +216,11 @@ def login_to_garmin() -> Any:
         api = Garmin()
         api.login(tokenstore)
         return api
-    except (FileNotFoundError, GarminConnectAuthenticationError, GarminConnectConnectionError):
+    except (
+        FileNotFoundError,
+        GarminConnectAuthenticationError,
+        GarminConnectConnectionError,
+    ):
         pass
     except GarminConnectTooManyRequestsError as exc:
         raise GarminPOCError(f"rate limited by Garmin: {exc}") from exc
@@ -221,7 +240,9 @@ def login_to_garmin() -> Any:
     except GarminConnectTooManyRequestsError as exc:
         raise GarminPOCError(f"rate limited by Garmin: {exc}") from exc
     except GarminConnectAuthenticationError as exc:
-        raise GarminPOCError(f"invalid credentials, MFA failure, or expired session: {exc}") from exc
+        raise GarminPOCError(
+            f"invalid credentials, MFA failure, or expired session: {exc}"
+        ) from exc
     except GarminConnectConnectionError as exc:
         raise GarminPOCError(f"connection or Garmin API error: {exc}") from exc
 
@@ -230,8 +251,12 @@ def prompt_mfa() -> str:
     return input("Garmin MFA/2FA code: ").strip()
 
 
-def upload_confirmed(weight_kg: float, allow_upload: bool, confirm_weight_kg: float | None) -> bool:
-    return bool(allow_upload and confirm_weight_kg is not None and confirm_weight_kg == weight_kg)
+def upload_confirmed(
+    weight_kg: float, allow_upload: bool, confirm_weight_kg: float | None
+) -> bool:
+    return bool(
+        allow_upload and confirm_weight_kg is not None and confirm_weight_kg == weight_kg
+    )
 
 
 def parse_datetime(value: str) -> datetime:

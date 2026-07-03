@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from datetime import UTC, datetime
 import json
 import os
+from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Protocol, runtime_checkable
-
 
 DEFAULT_SYNC_STATE_PATH = Path("data/sync_state.json")
 SYNC_STATE_ENV_VAR = "HEALTHSYNC_SYNC_STATE_PATH"
@@ -72,7 +71,7 @@ class FileSyncState:
         self._synced_keys, self._destination_suspensions = self._load()
 
     @classmethod
-    def from_env(cls, env_var: str = SYNC_STATE_ENV_VAR) -> "FileSyncState":
+    def from_env(cls, env_var: str = SYNC_STATE_ENV_VAR) -> FileSyncState:
         """Create state from an environment variable or the default local path."""
 
         return cls(os.environ.get(env_var, DEFAULT_SYNC_STATE_PATH))
@@ -153,7 +152,9 @@ class FileSyncState:
 class CloudStorageSyncState:
     """Google Cloud Storage-backed sync state for cloud duplicate prevention."""
 
-    def __init__(self, bucket_name: str, blob_name: str, *, client: Any | None = None) -> None:
+    def __init__(
+        self, bucket_name: str, blob_name: str, *, client: Any | None = None
+    ) -> None:
         self.bucket_name = _required_value(bucket_name, "bucket_name")
         self.blob_name = _required_value(blob_name, "blob_name")
         self._client = client or _default_storage_client()
@@ -162,7 +163,7 @@ class CloudStorageSyncState:
         self._synced_keys, self._destination_suspensions = self._load()
 
     @classmethod
-    def from_env(cls) -> "CloudStorageSyncState":
+    def from_env(cls) -> CloudStorageSyncState:
         """Create state from Google Cloud Storage environment variables."""
 
         bucket_name = os.environ.get(GCS_SYNC_STATE_BUCKET_ENV_VAR, "")
@@ -267,9 +268,7 @@ def build_sync_state_from_env() -> SyncState:
         return FileSyncState.from_env()
     if backend in {"gcs", "cloud-storage", "cloud_storage"}:
         return CloudStorageSyncState.from_env()
-    raise ValueError(
-        f"{SYNC_STATE_BACKEND_ENV_VAR} must be one of: file, gcs"
-    )
+    raise ValueError(f"{SYNC_STATE_BACKEND_ENV_VAR} must be one of: file, gcs")
 
 
 def _parse_synced_keys(raw: Any) -> set[str]:

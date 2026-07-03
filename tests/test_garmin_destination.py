@@ -1,5 +1,5 @@
-from datetime import datetime, timedelta, timezone
 import logging
+from datetime import UTC, datetime, timedelta, timezone
 
 import pytest
 
@@ -31,7 +31,7 @@ def make_measurement(
 ) -> WeightMeasurement:
     return WeightMeasurement(
         source="test_source",
-        measured_at=datetime(2026, 6, 27, 9, 30, tzinfo=timezone.utc),
+        measured_at=datetime(2026, 6, 27, 9, 30, tzinfo=UTC),
         weight_kg=weight_kg,
         body_fat_percent=body_fat_percent,
         muscle_mass_kg=muscle_mass_kg,
@@ -125,7 +125,9 @@ def test_maps_body_fat_to_garmin_body_composition_payload() -> None:
     }
 
 
-def test_config_reads_environment_and_ignores_placeholders(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_config_reads_environment_and_ignores_placeholders(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setenv("GARMIN_EMAIL", "replace-with-garmin-email")
     monkeypatch.setenv("GARMIN_PASSWORD", "replace-with-garmin-password")
     monkeypatch.setenv("GARMIN_SESSION_DIR", ".local/test-garmin-session")
@@ -134,7 +136,10 @@ def test_config_reads_environment_and_ignores_placeholders(monkeypatch: pytest.M
 
     assert config.email is None
     assert config.password is None
-    assert str(config.session_dir) == ".local\\test-garmin-session" or str(config.session_dir) == ".local/test-garmin-session"
+    assert (
+        str(config.session_dir) == ".local\\test-garmin-session"
+        or str(config.session_dir) == ".local/test-garmin-session"
+    )
     assert config.verify_uploads is False
 
 
@@ -318,7 +323,9 @@ def test_missing_credentials_after_session_failure_is_clear(tmp_path) -> None:
     calls: list[tuple[str, dict]] = []
 
     def factory(**kwargs):
-        return FakeGarminClient(login_error=RuntimeError("no saved session"), calls=calls, **kwargs)
+        return FakeGarminClient(
+            login_error=RuntimeError("no saved session"), calls=calls, **kwargs
+        )
 
     destination = GarminWeightDestination(
         GarminConfig(session_dir=tmp_path / "session"),
@@ -331,9 +338,7 @@ def test_missing_credentials_after_session_failure_is_clear(tmp_path) -> None:
 
 def test_stored_session_login_failure_reason_is_logged(tmp_path, caplog) -> None:
     def factory(**kwargs):
-        return FakeGarminClient(
-            login_error=RuntimeError("token cache expired"), **kwargs
-        )
+        return FakeGarminClient(login_error=RuntimeError("token cache expired"), **kwargs)
 
     destination = GarminWeightDestination(
         GarminConfig(session_dir=tmp_path / "session"),
@@ -511,9 +516,7 @@ def test_verification_disabled_by_default_does_not_read_back(tmp_path) -> None:
 def test_maps_aware_timestamp_to_utc_naive_for_garmin() -> None:
     measurement = WeightMeasurement(
         source="test_source",
-        measured_at=datetime(
-            2026, 6, 27, 9, 30, tzinfo=timezone(timedelta(hours=7))
-        ),
+        measured_at=datetime(2026, 6, 27, 9, 30, tzinfo=timezone(timedelta(hours=7))),
         weight_kg=72.5,
     )
 

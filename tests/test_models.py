@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
@@ -8,7 +8,7 @@ from healthsync.models import WeightMeasurement
 def test_weight_measurement_accepts_canonical_fields() -> None:
     measurement = WeightMeasurement(
         source=" file_weight ",
-        measured_at=datetime(2026, 6, 27, 9, 30, tzinfo=timezone.utc),
+        measured_at=datetime(2026, 6, 27, 9, 30, tzinfo=UTC),
         weight_kg=72,
         body_fat_percent=18.5,
         muscle_mass_kg=54.2,
@@ -23,7 +23,7 @@ def test_weight_measurement_accepts_canonical_fields() -> None:
 
 
 def test_sync_key_is_stable_for_duplicate_detection() -> None:
-    measured_at = datetime(2026, 6, 27, 9, 30, tzinfo=timezone.utc)
+    measured_at = datetime(2026, 6, 27, 9, 30, tzinfo=UTC)
 
     first = WeightMeasurement(
         source="file_weight",
@@ -44,12 +44,12 @@ def test_sync_key_is_stable_for_duplicate_detection() -> None:
 def test_sync_key_changes_when_duplicate_identity_changes() -> None:
     first = WeightMeasurement(
         source="file_weight",
-        measured_at=datetime(2026, 6, 27, 9, 30, tzinfo=timezone.utc),
+        measured_at=datetime(2026, 6, 27, 9, 30, tzinfo=UTC),
         weight_kg=72,
     )
     second = WeightMeasurement(
         source="file_weight",
-        measured_at=datetime(2026, 6, 28, 9, 30, tzinfo=timezone.utc),
+        measured_at=datetime(2026, 6, 28, 9, 30, tzinfo=UTC),
         weight_kg=72,
     )
 
@@ -76,7 +76,7 @@ def test_weight_measurement_rejects_invalid_values(
 ) -> None:
     kwargs = {
         "source": "file_weight",
-        "measured_at": datetime(2026, 6, 27, 9, 30, tzinfo=timezone.utc),
+        "measured_at": datetime(2026, 6, 27, 9, 30, tzinfo=UTC),
         "weight_kg": 72,
     }
     kwargs[field] = value
@@ -93,7 +93,7 @@ def test_sync_key_treats_naive_datetime_as_utc() -> None:
     )
     aware = WeightMeasurement(
         source="file_weight",
-        measured_at=datetime(2026, 6, 27, 9, 30, tzinfo=timezone.utc),
+        measured_at=datetime(2026, 6, 27, 9, 30, tzinfo=UTC),
         weight_kg=72.5,
     )
 
