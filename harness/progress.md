@@ -278,11 +278,27 @@
 
 ### Remaining Risk
 
-- Known open issue from review: Zepp Life timestamps are parsed as naive local
-  time (`datetime.fromtimestamp`), so the same measurement produces different
-  sync keys on hosts in different timezones (local UTC+7 vs cloud UTC). This
-  can defeat duplicate prevention and should be fixed before relying on mixed
-  local/cloud runs.
 - The generation captured at state load is held for the whole run; a very slow
   run overlapping another writer will fail its final save by design (fail
   fast, no retry).
+
+### Timezone Fix (same day, same branch)
+
+- Fixed the timezone bug found in review: Zepp Life epoch timestamps are now
+  parsed as UTC-aware (`datetime.fromtimestamp(ts, tz=timezone.utc)`) instead
+  of naive host-local time, so sync keys no longer depend on the host
+  timezone (local UTC+7 vs cloud UTC).
+- Sync keys normalize datetimes as UTC wall time without an offset: naive
+  values are treated as UTC, aware values are converted to UTC and rendered
+  without `+00:00`. This deliberately preserves the existing cloud sync keys
+  (cloud ran with TZ=UTC, so its naive strings already equal UTC wall time) —
+  no key migration and no duplicate re-upload on deploy.
+- Garmin upload timestamps render as naive UTC through `_garmin_timestamp`,
+  keeping the upload payload byte-identical to what the deployed cloud
+  function already sends.
+- Zepp Life date strings without timezone info (the format in the sample
+  payload) are still parsed naive and interpreted as UTC by the sync key.
+  If real Zepp string data turns out to be local wall time, Garmin will show
+  that wall time as-is; acceptable for now.
+- Tests: 89 passed, including new tests for naive-vs-aware key equality,
+  UTC epoch parsing, and aware-to-naive-UTC Garmin timestamps.

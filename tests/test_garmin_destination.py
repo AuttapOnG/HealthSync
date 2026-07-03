@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import logging
 
 import pytest
@@ -103,7 +103,7 @@ def test_maps_plain_weight_to_garmin_weigh_in_payload() -> None:
     assert mapping.args == {
         "weight": 72.5,
         "unitKey": "kg",
-        "timestamp": "2026-06-27T09:30:00+00:00",
+        "timestamp": "2026-06-27T09:30:00",
     }
 
 
@@ -118,7 +118,7 @@ def test_maps_body_fat_to_garmin_body_composition_payload() -> None:
 
     assert mapping.method == "add_body_composition"
     assert mapping.args == {
-        "timestamp": "2026-06-27T09:30:00+00:00",
+        "timestamp": "2026-06-27T09:30:00",
         "weight": 72.5,
         "percent_fat": 18.2,
         "muscle_mass": 52.1,
@@ -446,7 +446,7 @@ def test_upload_with_verification_success_reads_back_same_day_weight(tmp_path) -
             {
                 "weight": 72.5,
                 "unitKey": "kg",
-                "timestamp": "2026-06-27T09:30:00+00:00",
+                "timestamp": "2026-06-27T09:30:00",
             },
         ),
         (
@@ -506,3 +506,17 @@ def test_verification_disabled_by_default_does_not_read_back(tmp_path) -> None:
     destination.upload_weight_measurement(make_measurement())
 
     assert [name for name, _ in calls] == ["login", "add_weigh_in"]
+
+
+def test_maps_aware_timestamp_to_utc_naive_for_garmin() -> None:
+    measurement = WeightMeasurement(
+        source="test_source",
+        measured_at=datetime(
+            2026, 6, 27, 9, 30, tzinfo=timezone(timedelta(hours=7))
+        ),
+        weight_kg=72.5,
+    )
+
+    mapping = build_upload_mapping(measurement)
+
+    assert mapping.args["timestamp"] == "2026-06-27T02:30:00"

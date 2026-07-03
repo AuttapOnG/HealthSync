@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime, timezone
 import json
 import logging
 import os
@@ -290,7 +290,7 @@ def persist_tokens_json_to_secret_manager(
 def build_upload_mapping(measurement: WeightMeasurement) -> GarminUploadMapping:
     """Map a canonical measurement to the selected Garmin upload call."""
 
-    timestamp = measurement.measured_at.isoformat()
+    timestamp = _garmin_timestamp(measurement.measured_at)
     if measurement.body_fat_percent is not None or measurement.muscle_mass_kg is not None:
         args: dict[str, Any] = {
             "timestamp": timestamp,
@@ -310,6 +310,14 @@ def build_upload_mapping(measurement: WeightMeasurement) -> GarminUploadMapping:
             "timestamp": timestamp,
         },
     )
+
+
+def _garmin_timestamp(value: datetime) -> str:
+    """Render a measurement time as naive UTC, the format Garmin expects."""
+
+    if value.tzinfo is not None:
+        value = value.astimezone(timezone.utc).replace(tzinfo=None)
+    return value.isoformat()
 
 
 def verify_uploaded_weight(client: Any, measurement: WeightMeasurement) -> None:

@@ -14,9 +14,12 @@ def _normalize_datetime(value: datetime) -> str:
     if not isinstance(value, datetime):
         raise ValueError("measured_at must be a datetime")
 
+    # Naive datetimes are treated as UTC wall time, and aware datetimes are
+    # rendered as UTC without an offset, so the same instant always produces
+    # the same sync key regardless of the host timezone or representation.
     normalized = value
     if normalized.tzinfo is not None:
-        normalized = normalized.astimezone(timezone.utc)
+        normalized = normalized.astimezone(timezone.utc).replace(tzinfo=None)
 
     return normalized.isoformat(timespec="seconds")
 

@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 import pytest
 
@@ -151,3 +151,24 @@ def test_config_from_env_rejects_invalid_days(monkeypatch: pytest.MonkeyPatch) -
 
     with pytest.raises(ZeppLifeSourceError, match="ZEPP_DAYS must be an integer"):
         ZeppLifeConfig.from_env()
+
+
+def test_epoch_timestamps_parse_as_utc_regardless_of_local_timezone() -> None:
+    source, _urls, _headers = make_source(
+        [
+            {
+                "weightRecords": [
+                    {
+                        "timestamp": 1750000000000,
+                        "weight": 72.5,
+                    }
+                ]
+            }
+        ]
+    )
+
+    measurements = source.fetch_weight_measurements()
+
+    assert measurements[0].measured_at == datetime(
+        2025, 6, 15, 15, 6, 40, tzinfo=timezone.utc
+    )
