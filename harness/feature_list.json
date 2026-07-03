@@ -174,14 +174,14 @@
     {
       "id": "HS-013",
       "title": "Add ruff/mypy verification gate and CI",
-      "status": "in-progress",
+      "status": "done",
       "priority": "medium",
       "description": "Add ruff lint/format, mypy type checking, and a CI workflow that runs both plus pytest on every push, without changing sync-key or Garmin payload behavior.",
       "acceptance_criteria": [
         "pyproject.toml configures ruff lint and format for healthsync/, tests/, scripts/, and main.py.",
         "ruff check . and ruff format --check . pass cleanly.",
-        "mypy is configured and passes (added in a later task).",
-        "A CI workflow runs ruff, mypy, and pytest on every push (added in a later task).",
+        "mypy is configured and passes.",
+        "A CI workflow runs ruff, mypy, and pytest on every push.",
         "No auto-fix or reformat changes sync_key output or Garmin upload payload/timestamp behavior.",
         "89 existing tests continue to pass."
       ]
