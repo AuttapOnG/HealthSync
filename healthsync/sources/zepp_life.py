@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 import json
 import os
 from typing import Any, Callable
@@ -254,7 +254,7 @@ def _parse_datetime(value: Any) -> datetime | None:
 
     if isinstance(value, (int, float)):
         timestamp = value / 1000 if value > 10_000_000_000 else value
-        return datetime.fromtimestamp(timestamp)
+        return datetime.fromtimestamp(timestamp, tz=timezone.utc)
 
     cleaned = str(value).strip()
     if not cleaned:

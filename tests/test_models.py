@@ -83,3 +83,18 @@ def test_weight_measurement_rejects_invalid_values(
 
     with pytest.raises(ValueError, match=message):
         WeightMeasurement(**kwargs)
+
+
+def test_sync_key_treats_naive_datetime_as_utc() -> None:
+    naive = WeightMeasurement(
+        source="file_weight",
+        measured_at=datetime(2026, 6, 27, 9, 30),
+        weight_kg=72.5,
+    )
+    aware = WeightMeasurement(
+        source="file_weight",
+        measured_at=datetime(2026, 6, 27, 9, 30, tzinfo=timezone.utc),
+        weight_kg=72.5,
+    )
+
+    assert naive.sync_key == aware.sync_key

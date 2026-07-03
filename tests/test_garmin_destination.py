@@ -1,4 +1,5 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
+import logging
 
 import pytest
 
@@ -102,7 +103,7 @@ def test_maps_plain_weight_to_garmin_weigh_in_payload() -> None:
     assert mapping.args == {
         "weight": 72.5,
         "unitKey": "kg",
-        "timestamp": "2026-06-27T09:30:00+00:00",
+        "timestamp": "2026-06-27T09:30:00",
     }
 
 
@@ -117,7 +118,7 @@ def test_maps_body_fat_to_garmin_body_composition_payload() -> None:
 
     assert mapping.method == "add_body_composition"
     assert mapping.args == {
-        "timestamp": "2026-06-27T09:30:00+00:00",
+        "timestamp": "2026-06-27T09:30:00",
         "weight": 72.5,
         "percent_fat": 18.2,
         "muscle_mass": 52.1,
@@ -328,6 +329,24 @@ def test_missing_credentials_after_session_failure_is_clear(tmp_path) -> None:
         destination.upload_weight_measurement(make_measurement())
 
 
+def test_stored_session_login_failure_reason_is_logged(tmp_path, caplog) -> None:
+    def factory(**kwargs):
+        return FakeGarminClient(
+            login_error=RuntimeError("token cache expired"), **kwargs
+        )
+
+    destination = GarminWeightDestination(
+        GarminConfig(session_dir=tmp_path / "session"),
+        client_factory=factory,
+    )
+
+    with caplog.at_level(logging.WARNING, logger="healthsync.destinations.garmin"):
+        with pytest.raises(GarminConfigError):
+            destination.upload_weight_measurement(make_measurement())
+
+    assert "token cache expired" in caplog.text
+
+
 def test_session_tokens_are_written_before_login(tmp_path) -> None:
     calls: list[tuple[str, dict]] = []
     session_dir = tmp_path / "session"
@@ -427,7 +446,7 @@ def test_upload_with_verification_success_reads_back_same_day_weight(tmp_path) -
             {
                 "weight": 72.5,
                 "unitKey": "kg",
-                "timestamp": "2026-06-27T09:30:00+00:00",
+                "timestamp": "2026-06-27T09:30:00",
             },
         ),
         (
@@ -487,3 +506,17 @@ def test_verification_disabled_by_default_does_not_read_back(tmp_path) -> None:
     destination.upload_weight_measurement(make_measurement())
 
     assert [name for name, _ in calls] == ["login", "add_weigh_in"]
+
+
+def test_maps_aware_timestamp_to_utc_naive_for_garmin() -> None:
+    measurement = WeightMeasurement(
+        source="test_source",
+        measured_at=datetime(
+            2026, 6, 27, 9, 30, tzinfo=timezone(timedelta(hours=7))
+        ),
+        weight_kg=72.5,
+    )
+
+    mapping = build_upload_mapping(measurement)
+
+    assert mapping.args["timestamp"] == "2026-06-27T02:30:00"

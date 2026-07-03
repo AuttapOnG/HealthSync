@@ -64,7 +64,7 @@ def test_sync_engine_uploads_measurements_through_interfaces() -> None:
     assert result.failed_sync_keys == ()
 
 
-def test_sync_engine_logs_failed_uploads_and_continues(caplog: pytest.LogCaptureFixture) -> None:
+def test_sync_engine_logs_failed_upload_and_stops(caplog: pytest.LogCaptureFixture) -> None:
     measurements = [make_measurement(72.5), make_measurement(72.8)]
     source = FakeWeightSource(measurements)
     destination = FailingOnceDestination()
@@ -72,9 +72,9 @@ def test_sync_engine_logs_failed_uploads_and_continues(caplog: pytest.LogCapture
     with caplog.at_level("ERROR", logger="healthsync.sync_engine"):
         result = WeightSyncEngine(source, destination).sync_weight_measurements()
 
-    assert destination.seen == measurements
+    assert destination.seen == [measurements[0]]
     assert result.fetched_count == 2
-    assert result.uploaded_count == 1
+    assert result.uploaded_count == 0
     assert result.failed_count == 1
     assert result.failed_sync_keys == (measurements[0].sync_key,)
     assert "Failed to upload weight measurement" in caplog.text

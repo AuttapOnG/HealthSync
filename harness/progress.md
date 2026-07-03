@@ -235,3 +235,70 @@
 
 - The deployed Cloud Function service account may need additional Secret
   Manager permissions before token persistence can work in production.
+
+## 2026-07-03
+
+### Decisions
+
+- Destination suspension stays a manual gate by design: it never expires on
+  its own and a successful run does not clear it. The operational rule is to
+  clear the state entry as part of every fix-and-deploy, now documented in
+  `docs/cloud_function.md` under "Destination Suspension (Manual Circuit
+  Breaker)".
+- The sync engine must stop the run on the first upload failure instead of
+  attempting the remaining measurements against a destination that already
+  failed. Unattempted measurements stay unsynced and are picked up by the next
+  run after the circuit breaker is cleared.
+- Cloud runs must never fall back to Garmin email/password login. Tokens are
+  refreshed locally and uploaded to Secret Manager; the stored-session login
+  failure reason must therefore be visible in logs.
+- The HTTP entrypoint must not leak exception details (bucket names, env var
+  names) in 500 responses; details live in Cloud Logging only.
+- GCS sync state writes use `if_generation_match` optimistic concurrency. A
+  conflicting concurrent run fails fast with a clear error instead of silently
+  clobbering state.
+
+### Completed
+
+- Code review on branch `fix/engine-fail-fast-and-auth-logging` (all TDD):
+  - Sync engine breaks out of the upload loop after the first failure
+    (`healthsync/sync_engine.py`), still marking the destination suspended.
+  - Stored Garmin session login failures are now logged with their reason and
+    chained into the raised `GarminConfigError`
+    (`healthsync/destinations/garmin.py`).
+  - `main.sync_weight_http` returns a generic 500 error body.
+  - `CloudStorageSyncState` tracks blob generation on load and passes
+    `if_generation_match` on save; a `PreconditionFailed` becomes a clear
+    "modified by another run" error (`healthsync/state.py`).
+- Documented the manual circuit breaker and its clear-on-deploy rule in
+  `docs/cloud_function.md`, including the GCS state JSON shape with
+  `destination_suspensions` and the gsutil edit procedure.
+- Test suite: 86 passed (new tests for fail-fast engine behavior, stored
+  session failure logging, generic 500 body, and generation preconditions).
+
+### Remaining Risk
+
+- The generation captured at state load is held for the whole run; a very slow
+  run overlapping another writer will fail its final save by design (fail
+  fast, no retry).
+
+### Timezone Fix (same day, same branch)
+
+- Fixed the timezone bug found in review: Zepp Life epoch timestamps are now
+  parsed as UTC-aware (`datetime.fromtimestamp(ts, tz=timezone.utc)`) instead
+  of naive host-local time, so sync keys no longer depend on the host
+  timezone (local UTC+7 vs cloud UTC).
+- Sync keys normalize datetimes as UTC wall time without an offset: naive
+  values are treated as UTC, aware values are converted to UTC and rendered
+  without `+00:00`. This deliberately preserves the existing cloud sync keys
+  (cloud ran with TZ=UTC, so its naive strings already equal UTC wall time) —
+  no key migration and no duplicate re-upload on deploy.
+- Garmin upload timestamps render as naive UTC through `_garmin_timestamp`,
+  keeping the upload payload byte-identical to what the deployed cloud
+  function already sends.
+- Zepp Life date strings without timezone info (the format in the sample
+  payload) are still parsed naive and interpreted as UTC by the sync key.
+  If real Zepp string data turns out to be local wall time, Garmin will show
+  that wall time as-is; acceptable for now.
+- Tests: 89 passed, including new tests for naive-vs-aware key equality,
+  UTC epoch parsing, and aware-to-naive-UTC Garmin timestamps.
