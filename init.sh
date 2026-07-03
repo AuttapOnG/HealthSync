@@ -14,7 +14,7 @@ source "$VENV_DIR/bin/activate"
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 python -m pip install -r requirements-dev.txt
-python -m pip install -r requirements-poc.txt
+python -m pip install -r requirements-poc.txt || echo "WARNING: requirements-poc.txt failed to install (network or upstream repo issue). Runtime and dev dependencies are installed; POC-only tooling (Garmin/Zepp POC scripts) is unavailable until this succeeds."
 
 echo
 echo "Done. Next steps:"

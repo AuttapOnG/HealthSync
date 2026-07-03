@@ -11,7 +11,9 @@ Status: done · Branch: docs/harness-advancement
   writes any secret/credential value — the only file it references is
   `.env.example` (a template, not a real `.env`).
 - `set -euo pipefail` ensures any install failure stops the script instead of
-  silently continuing.
+  silently continuing. (See "Remaining risk" below: the `requirements-poc.txt`
+  install is now the one deliberate exception — its failure is caught with
+  `|| echo "WARNING: ..."` so it doesn't abort the script.)
 - Made executable via `chmod +x init.sh`.
 
 ## Completed
@@ -63,7 +65,13 @@ Status: done · Branch: docs/harness-advancement
   third-party GitHub repo; if that repo is deleted, rebased, or made
   private, `init.sh` will fail at the poc-install step even with network
   access. This is a pre-existing risk from HS-008/HS-010, not introduced by
-  this task.
+  this task. **Update (HS-014 follow-up)**: the poc install is now
+  non-fatal — `init.sh` runs `python -m pip install -r requirements-poc.txt
+  || echo "WARNING: ..."`, so a failure there only prints a warning and lets
+  the script continue and exit 0, as long as `requirements.txt` and
+  `requirements-dev.txt` (still installed under strict `set -euo pipefail`)
+  succeeded. POC-only tooling (Garmin/Zepp POC scripts) simply becomes
+  unavailable until the poc install succeeds.
 - The `google.cloud.storage` import-style fix is scoped to the one call site
   needed for the mypy gate to pass; if other modules later import
   `google.cloud.secret_manager` or similar in the `from google.cloud import
