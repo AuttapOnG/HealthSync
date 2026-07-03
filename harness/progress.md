@@ -235,3 +235,54 @@
 
 - The deployed Cloud Function service account may need additional Secret
   Manager permissions before token persistence can work in production.
+
+## 2026-07-03
+
+### Decisions
+
+- Destination suspension stays a manual gate by design: it never expires on
+  its own and a successful run does not clear it. The operational rule is to
+  clear the state entry as part of every fix-and-deploy, now documented in
+  `docs/cloud_function.md` under "Destination Suspension (Manual Circuit
+  Breaker)".
+- The sync engine must stop the run on the first upload failure instead of
+  attempting the remaining measurements against a destination that already
+  failed. Unattempted measurements stay unsynced and are picked up by the next
+  run after the circuit breaker is cleared.
+- Cloud runs must never fall back to Garmin email/password login. Tokens are
+  refreshed locally and uploaded to Secret Manager; the stored-session login
+  failure reason must therefore be visible in logs.
+- The HTTP entrypoint must not leak exception details (bucket names, env var
+  names) in 500 responses; details live in Cloud Logging only.
+- GCS sync state writes use `if_generation_match` optimistic concurrency. A
+  conflicting concurrent run fails fast with a clear error instead of silently
+  clobbering state.
+
+### Completed
+
+- Code review on branch `fix/engine-fail-fast-and-auth-logging` (all TDD):
+  - Sync engine breaks out of the upload loop after the first failure
+    (`healthsync/sync_engine.py`), still marking the destination suspended.
+  - Stored Garmin session login failures are now logged with their reason and
+    chained into the raised `GarminConfigError`
+    (`healthsync/destinations/garmin.py`).
+  - `main.sync_weight_http` returns a generic 500 error body.
+  - `CloudStorageSyncState` tracks blob generation on load and passes
+    `if_generation_match` on save; a `PreconditionFailed` becomes a clear
+    "modified by another run" error (`healthsync/state.py`).
+- Documented the manual circuit breaker and its clear-on-deploy rule in
+  `docs/cloud_function.md`, including the GCS state JSON shape with
+  `destination_suspensions` and the gsutil edit procedure.
+- Test suite: 86 passed (new tests for fail-fast engine behavior, stored
+  session failure logging, generic 500 body, and generation preconditions).
+
+### Remaining Risk
+
+- Known open issue from review: Zepp Life timestamps are parsed as naive local
+  time (`datetime.fromtimestamp`), so the same measurement produces different
+  sync keys on hosts in different timezones (local UTC+7 vs cloud UTC). This
+  can defeat duplicate prevention and should be fixed before relying on mixed
+  local/cloud runs.
+- The generation captured at state load is held for the whole run; a very slow
+  run overlapping another writer will fail its final save by design (fail
+  fast, no retry).

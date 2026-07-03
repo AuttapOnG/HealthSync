@@ -209,6 +209,25 @@ def test_failed_upload_is_not_marked_synced(tmp_path) -> None:
     assert result.failed_sync_keys == (measurement.sync_key,)
 
 
+def test_sync_engine_stops_uploading_after_first_upload_failure(tmp_path) -> None:
+    measurements = [make_measurement(70.0), make_measurement(71.0)]
+    state = FileSyncState(tmp_path / "sync_state.json")
+    destination = FailingDestination()
+
+    result = WeightSyncEngine(
+        FakeWeightSource(measurements),
+        destination,
+        sync_state=state,
+        destination_name="garmin",
+    ).sync_weight_measurements()
+
+    assert destination.seen == [measurements[0]]
+    assert result.fetched_count == 2
+    assert result.uploaded_count == 0
+    assert result.failed_count == 1
+    assert result.failed_sync_keys == (measurements[0].sync_key,)
+
+
 def test_sync_engine_marks_destination_suspended_after_upload_failure(tmp_path) -> None:
     measurement = make_measurement()
     state = FileSyncState(tmp_path / "sync_state.json")
@@ -297,21 +316,39 @@ def test_file_sync_state_loads_utf8_bom_file(tmp_path) -> None:
 
 
 class FakeStorageBlob:
-    def __init__(self, text: str | None = None) -> None:
+    def __init__(self, text: str | None = None, *, generation: int | None = None) -> None:
         self.text = text
+        self.generation = generation if generation is not None else (
+            1 if text is not None else None
+        )
         self.uploaded_text: str | None = None
         self.content_type: str | None = None
+        self.upload_error: Exception | None = None
+        self.if_generation_matches: list[int | None] = []
 
     def exists(self) -> bool:
         return self.text is not None
 
+    def reload(self) -> None:
+        pass
+
     def download_as_text(self, encoding: str = "utf-8") -> str:
         return self.text or ""
 
-    def upload_from_string(self, text: str, *, content_type: str) -> None:
+    def upload_from_string(
+        self,
+        text: str,
+        *,
+        content_type: str,
+        if_generation_match: int | None = None,
+    ) -> None:
+        self.if_generation_matches.append(if_generation_match)
+        if self.upload_error is not None:
+            raise self.upload_error
         self.text = text
         self.uploaded_text = text
         self.content_type = content_type
+        self.generation = (self.generation or 0) + 1
 
 
 class FakeStorageBucket:
@@ -364,6 +401,49 @@ def test_cloud_storage_sync_state_marks_and_saves_key() -> None:
     assert json.loads(blob.uploaded_text or "{}") == {
         "synced_weight_keys": [measurement.sync_key]
     }
+
+
+def test_cloud_storage_sync_state_saves_with_generation_precondition() -> None:
+    blob = FakeStorageBlob(json.dumps({"synced_weight_keys": []}), generation=5)
+    state = CloudStorageSyncState(
+        "test-bucket",
+        "state/sync.json",
+        client=FakeStorageClient(blob),
+    )
+
+    state.mark_synced("key-1")
+    state.mark_synced("key-2")
+
+    assert blob.if_generation_matches == [5, 6]
+
+
+def test_cloud_storage_sync_state_requires_missing_blob_for_first_save() -> None:
+    blob = FakeStorageBlob()
+    state = CloudStorageSyncState(
+        "test-bucket",
+        "state/sync.json",
+        client=FakeStorageClient(blob),
+    )
+
+    state.mark_synced("key-1")
+
+    assert blob.if_generation_matches == [0]
+
+
+def test_cloud_storage_sync_state_save_conflict_is_clear() -> None:
+    class PreconditionFailed(Exception):
+        pass
+
+    blob = FakeStorageBlob(json.dumps({"synced_weight_keys": []}), generation=5)
+    blob.upload_error = PreconditionFailed("412 precondition failed")
+    state = CloudStorageSyncState(
+        "test-bucket",
+        "state/sync.json",
+        client=FakeStorageClient(blob),
+    )
+
+    with pytest.raises(RuntimeError, match="modified by another run"):
+        state.mark_synced("key-1")
 
 
 def test_build_sync_state_from_env_uses_gcs(

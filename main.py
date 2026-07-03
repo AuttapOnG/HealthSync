@@ -27,9 +27,12 @@ def sync_weight_http(request: Any) -> tuple[str, int, dict[str, str]]:
 
     try:
         result = run_weight_sync_from_env()
-    except Exception as exc:
+    except Exception:
         LOGGER.exception("HealthSync weight sync failed")
-        return _json_response({"error": str(exc)}, status=500)
+        return _json_response(
+            {"error": "HealthSync weight sync failed; see Cloud Logging for details"},
+            status=500,
+        )
 
     status = 200 if result.failed_count == 0 and not result.keepalive_failed else 502
     log_sync_result(result, status=status)

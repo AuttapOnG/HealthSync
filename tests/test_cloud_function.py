@@ -98,16 +98,21 @@ def test_sync_weight_http_reports_keepalive_failure(
     assert json.loads(body)["keepalive_failed"] is True
 
 
-def test_sync_weight_http_reports_sync_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_sync_weight_http_reports_sync_failure_without_leaking_details(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     def fail() -> WeightSyncResult:
-        raise RuntimeError("Zepp Life API request failed")
+        raise RuntimeError("Invalid sync state JSON in gs://secret-bucket/state.json")
 
     monkeypatch.setattr(main, "run_weight_sync_from_env", fail)
 
     body, status, _headers = main.sync_weight_http(FakeRequest())
 
     assert status == 500
-    assert json.loads(body) == {"error": "Zepp Life API request failed"}
+    assert json.loads(body) == {
+        "error": "HealthSync weight sync failed; see Cloud Logging for details"
+    }
+    assert "secret-bucket" not in body
 
 
 def test_sync_weight_http_rejects_unsupported_methods() -> None:

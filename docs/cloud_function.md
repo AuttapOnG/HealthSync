@@ -120,6 +120,48 @@ The GCS object uses the same JSON shape as local file state:
 }
 ```
 
+## Destination Suspension (Manual Circuit Breaker)
+
+When an upload or keepalive to a destination fails, the sync engine marks that
+destination as suspended in the sync state:
+
+```json
+{
+  "synced_weight_keys": [],
+  "destination_suspensions": {
+    "garmin": {
+      "manual": true,
+      "reason": "upload failed"
+    }
+  }
+}
+```
+
+While suspended, every later run skips all provider calls and returns
+`destination_suspended: true` in the sync result. This is an intentional
+manual gate: the suspension never expires on its own, and a successful run
+does not clear it. A failing destination stays paused until a human looks at
+the failure.
+
+**Operational rule: after fixing the root cause and deploying, clear the
+circuit breaker as part of the deploy.** Remove the destination's entry from
+`destination_suspensions` in the sync state, then trigger or wait for the next
+scheduled run and confirm the result no longer reports
+`destination_suspended: true`.
+
+For the GCS backend:
+
+```powershell
+gsutil cp gs://<state-bucket>/healthsync/sync_state.json sync_state.json
+# Edit sync_state.json: delete the "garmin" entry (or the whole
+# "destination_suspensions" object), then write it back.
+gsutil cp sync_state.json gs://<state-bucket>/healthsync/sync_state.json
+```
+
+For the local file backend, edit the file at `HEALTHSYNC_SYNC_STATE_PATH`
+(default `data/sync_state.json`) the same way. Do not remove entries from
+`synced_weight_keys` while doing this — that would re-upload old measurements.
+
 ## Scheduler
 
 The deployed function can be triggered every four hours with Cloud Scheduler:

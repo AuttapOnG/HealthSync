@@ -222,7 +222,11 @@ class CloudStorageSyncState:
 
     def _load(self) -> tuple[set[str], dict[str, DestinationSuspension]]:
         if not self._blob.exists():
+            self._generation = 0
             return set(), {}
+
+        self._blob.reload()
+        self._generation = self._blob.generation or 0
 
         try:
             raw = json.loads(self._blob.download_as_text(encoding="utf-8-sig"))
@@ -238,10 +242,21 @@ class CloudStorageSyncState:
             self._synced_keys,
             self._destination_suspensions,
         )
-        self._blob.upload_from_string(
-            json.dumps(payload, indent=2, sort_keys=True) + "\n",
-            content_type="application/json",
-        )
+        try:
+            # if_generation_match=0 requires that the blob does not exist yet.
+            self._blob.upload_from_string(
+                json.dumps(payload, indent=2, sort_keys=True) + "\n",
+                content_type="application/json",
+                if_generation_match=self._generation,
+            )
+        except Exception as exc:
+            if type(exc).__name__ == "PreconditionFailed":
+                raise RuntimeError(
+                    f"Sync state gs://{self.bucket_name}/{self.blob_name} was "
+                    "modified by another run; refusing to overwrite"
+                ) from exc
+            raise
+        self._generation = self._blob.generation or 0
 
 
 def build_sync_state_from_env() -> SyncState:

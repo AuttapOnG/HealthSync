@@ -83,13 +83,13 @@ class WeightSyncEngine:
                 failed_sync_keys.append(measurement.sync_key)
                 self._mark_destination_suspended("upload failed")
                 self._logger.exception(
-                    "Failed to upload weight measurement",
+                    "Failed to upload weight measurement; stopping this run",
                     extra={
                         "source": measurement.source,
                         "sync_key": measurement.sync_key,
                     },
                 )
-                continue
+                break
 
             if self._sync_state is not None:
                 self._sync_state.mark_synced(measurement.sync_key)

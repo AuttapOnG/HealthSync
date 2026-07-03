@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+import logging
 
 import pytest
 
@@ -326,6 +327,24 @@ def test_missing_credentials_after_session_failure_is_clear(tmp_path) -> None:
 
     with pytest.raises(GarminConfigError, match="Stored Garmin session login failed"):
         destination.upload_weight_measurement(make_measurement())
+
+
+def test_stored_session_login_failure_reason_is_logged(tmp_path, caplog) -> None:
+    def factory(**kwargs):
+        return FakeGarminClient(
+            login_error=RuntimeError("token cache expired"), **kwargs
+        )
+
+    destination = GarminWeightDestination(
+        GarminConfig(session_dir=tmp_path / "session"),
+        client_factory=factory,
+    )
+
+    with caplog.at_level(logging.WARNING, logger="healthsync.destinations.garmin"):
+        with pytest.raises(GarminConfigError):
+            destination.upload_weight_measurement(make_measurement())
+
+    assert "token cache expired" in caplog.text
 
 
 def test_session_tokens_are_written_before_login(tmp_path) -> None:

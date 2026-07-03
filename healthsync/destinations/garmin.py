@@ -179,14 +179,17 @@ class GarminWeightDestination:
             persist_session_tokens(self._config)
             self._client = client
             return client
-        except Exception:
-            pass
+        except Exception as exc:
+            stored_session_error = exc
+            LOGGER.warning(
+                "Stored Garmin session login failed: %s", stored_session_error
+            )
 
         if not self._config.has_credentials:
             raise GarminConfigError(
                 "Stored Garmin session login failed and GARMIN_EMAIL/GARMIN_PASSWORD "
                 "are not configured"
-            )
+            ) from stored_session_error
 
         self._config.session_dir.mkdir(parents=True, exist_ok=True)
         try:
