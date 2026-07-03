@@ -32,3 +32,4 @@ Thumbs.db
 
 # Agent-personal scaffolding (Superpowers etc.) — not shared team artifacts
 docs/superpowers/
+.superpowers/
