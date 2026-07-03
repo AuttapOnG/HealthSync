@@ -29,3 +29,6 @@ data/sync_state.json
 Thumbs.db
 .vscode/
 .idea/
+
+# Agent-personal scaffolding (Superpowers etc.) — not shared team artifacts
+docs/superpowers/
