@@ -42,8 +42,11 @@ Status: done · Branch: `fix/HS-011-garmin-secret-version-retention`
 - Committed the retention fix as `5a56666` and deployed it source-only on
   2026-08-15 as Cloud Function revision
   `healthsync-weight-sync-00010-zih`. The revision is ACTIVE with all traffic
-  and preserves the existing runtime configuration. A manual sync was not
-  triggered; 43 active token versions remain until the next scheduled run.
+  and preserves the existing runtime configuration. A user-approved manual
+  scheduler run returned HTTP 200 with one duplicate skipped, a successful
+  keepalive, no upload or failure, and no destination suspension. Cleanup
+  destroyed token versions 1-42 and retained version 43 as the only active
+  version.
 - Documented `GARMIN_TOKENS_SECRET_ID` and `GARMIN_TOKENS_SECRET_PROJECT` in
   `.env.example` and `docs/cloud_function.md`.
 - Added a generic destination keepalive hook. The sync engine calls it once

@@ -9,11 +9,12 @@ from HS-011 live. The Cloud Scheduler job
 (`healthsync-weight-sync-every-4h`, cron `0 */4 * * *`, `Asia/Bangkok`) remains
 enabled, GCS holds sync state, and the function service account has version
 management permission only on `garmin-tokens-json`. The deployment preserved
-the existing function configuration. The 43 pre-existing active token versions
-remain until the next scheduled run performs retention cleanup; no manual run
-was triggered as part of deployment. Next work: verify that scheduled cleanup
-leaves one active token version, monitor Zepp/Garmin authentication, and decide
-whether to remove the still-present `GARMIN_EMAIL`/`GARMIN_PASSWORD` fallback.
+the existing function configuration. A user-approved manual run verified the
+new revision with HTTP 200, a successful duplicate-only Garmin keepalive, and
+no destination suspension. Retention destroyed 42 old token versions and left
+version 43 as the only active version. Next work: monitor Zepp/Garmin
+authentication and decide whether to remove the still-present
+`GARMIN_EMAIL`/`GARMIN_PASSWORD` fallback.
 
 ## Feature index
 
@@ -140,7 +141,9 @@ whether to remove the still-present `GARMIN_EMAIL`/`GARMIN_PASSWORD` fallback.
   `healthsync-weight-sync-00010-zih`. State is ACTIVE with 100% traffic; the
   existing 512 MiB memory, 120-second timeout, service account, environment,
   secrets, and scheduler configuration were preserved. Pre-deploy GCS state
-  had 47 synced keys and no destination suspension. No manual post-deploy sync
-  was triggered because it could upload health data and irreversibly destroy
-  stored token versions; 43 active token versions remain pending the next
-  scheduled run.
+  had 47 synced keys and no destination suspension. A subsequent user-approved
+  manual scheduler run completed with HTTP 200: fetched 1, skipped 1 duplicate,
+  uploaded 0, keepalive 1, failed 0, and no destination suspension. Secret
+  retention destroyed versions 1-42 and retained version 43 as the sole active
+  `garmin-tokens-json` version; GCS state remained at 47 synced keys with no
+  suspension.
