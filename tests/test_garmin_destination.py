@@ -1,5 +1,6 @@
 import logging
 from datetime import UTC, datetime, timedelta, timezone
+from types import SimpleNamespace
 
 import pytest
 
@@ -13,6 +14,8 @@ from healthsync.destinations.garmin import (
     GarminUploadError,
     GarminVerificationError,
     GarminWeightDestination,
+    _destroy_older_secret_versions,
+    _persist_tokens_json_with_client,
     build_upload_mapping,
     garmin_record_weight_kg,
     hydrate_session_tokens,
@@ -243,6 +246,114 @@ def test_persist_session_tokens_writes_configured_secret(
             "secret_id": "garmin-tokens",
             "project_id": "healthsync-test",
         }
+    ]
+
+
+class FakeSecretManagerClient:
+    def __init__(
+        self,
+        *,
+        latest_number: int,
+        latest_tokens_json: str,
+        enabled_numbers: list[int],
+        disabled_numbers: list[int] | None = None,
+    ) -> None:
+        self.secret_name = "projects/healthsync-test/secrets/garmin-tokens"
+        self.latest_number = latest_number
+        self.latest_tokens_json = latest_tokens_json
+        self.enabled_numbers = enabled_numbers
+        self.disabled_numbers = disabled_numbers or []
+        self.added_payloads: list[bytes] = []
+        self.destroyed_names: list[str] = []
+
+    def access_secret_version(self, *, request: dict[str, str]) -> object:
+        assert request == {"name": f"{self.secret_name}/versions/latest"}
+        return SimpleNamespace(
+            name=f"{self.secret_name}/versions/{self.latest_number}",
+            payload=SimpleNamespace(data=self.latest_tokens_json.encode("utf-8")),
+        )
+
+    def add_secret_version(self, *, request: dict) -> object:
+        self.latest_number += 1
+        self.enabled_numbers.append(self.latest_number)
+        self.added_payloads.append(request["payload"]["data"])
+        return SimpleNamespace(name=f"{self.secret_name}/versions/{self.latest_number}")
+
+    def list_secret_versions(self, *, request: dict[str, str]) -> list[object]:
+        numbers = (
+            self.enabled_numbers
+            if request["filter"] == "state:ENABLED"
+            else self.disabled_numbers
+        )
+        return [
+            SimpleNamespace(name=f"{self.secret_name}/versions/{number}")
+            for number in numbers
+        ]
+
+    def destroy_secret_version(self, *, request: dict[str, str]) -> None:
+        self.destroyed_names.append(request["name"])
+
+
+def test_persist_tokens_cleans_old_versions_when_tokens_are_unchanged() -> None:
+    client = FakeSecretManagerClient(
+        latest_number=3,
+        latest_tokens_json='{"oauth1_token": "same"}',
+        enabled_numbers=[1, 3],
+        disabled_numbers=[2],
+    )
+
+    _persist_tokens_json_with_client(
+        client,
+        tokens_json='{"oauth1_token": "same"}',
+        secret_name=client.secret_name,
+        not_found_error=RuntimeError,
+    )
+
+    assert client.added_payloads == []
+    assert client.destroyed_names == [
+        f"{client.secret_name}/versions/1",
+        f"{client.secret_name}/versions/2",
+    ]
+
+
+def test_persist_tokens_adds_new_version_then_cleans_old_versions() -> None:
+    client = FakeSecretManagerClient(
+        latest_number=2,
+        latest_tokens_json='{"oauth1_token": "old"}',
+        enabled_numbers=[1, 2],
+    )
+
+    _persist_tokens_json_with_client(
+        client,
+        tokens_json='{"oauth1_token": "new"}',
+        secret_name=client.secret_name,
+        not_found_error=RuntimeError,
+    )
+
+    assert client.added_payloads == [b'{"oauth1_token": "new"}']
+    assert client.destroyed_names == [
+        f"{client.secret_name}/versions/1",
+        f"{client.secret_name}/versions/2",
+    ]
+
+
+def test_secret_cleanup_does_not_destroy_concurrently_created_newer_version() -> None:
+    client = FakeSecretManagerClient(
+        latest_number=4,
+        latest_tokens_json='{"oauth1_token": "newer"}',
+        enabled_numbers=[1, 3, 4],
+        disabled_numbers=[2],
+    )
+
+    _destroy_older_secret_versions(
+        client,
+        secret_name=client.secret_name,
+        keep_version_name=f"{client.secret_name}/versions/3",
+    )
+
+    assert client.destroyed_names == [
+        f"{client.secret_name}/versions/1",
+        f"{client.secret_name}/versions/2",
     ]
 
 

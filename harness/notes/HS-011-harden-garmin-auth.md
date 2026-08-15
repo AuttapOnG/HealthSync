@@ -1,6 +1,6 @@
 # HS-011 Harden Garmin unattended auth
 
-Status: done · Branch: -
+Status: done · Branch: `fix/HS-011-garmin-secret-version-retention`
 
 ## Decisions
 
@@ -29,6 +29,29 @@ Status: done · Branch: -
 - Added optional Secret Manager persistence for refreshed Garmin token cache
   JSON, plus tests for config parsing, no-overwrite hydration, and
   persistence dispatch.
+- Limited persisted Garmin token history to one active Secret Manager version.
+  Each persistence attempt now destroys versions older than the retained latest
+  version, including cleanup when token JSON is unchanged. Versions newer than
+  the retained version are never destroyed, protecting overlapping invocations.
+  Cloud IAM now also requires Secret Version Manager on the token secret.
+- Granted `roles/secretmanager.secretVersionManager` on only
+  `garmin-tokens-json` to the deployed `healthsync-runner` service account on
+  2026-08-15. The existing Secret Accessor and Secret Version Adder bindings
+  were left unchanged; no token versions were destroyed and no deployment was
+  performed as part of the IAM update.
+- Committed the retention fix as `5a56666` and deployed it source-only on
+  2026-08-15 as Cloud Function revision
+  `healthsync-weight-sync-00010-zih`. The revision is ACTIVE with all traffic
+  and preserves the existing runtime configuration. A user-approved manual
+  scheduler run returned HTTP 200 with one duplicate skipped, a successful
+  keepalive, no upload or failure, and no destination suspension. Cleanup
+  destroyed token versions 1-42 and retained version 43 as the only active
+  version.
+- After verifying version 2 was enabled and latest for the three static
+  provider secrets, permanently destroyed historical version 1 of
+  `garmin-email`, `garmin-password`, and `zepp-app-token` with user approval.
+  The old values differed from version 2 and are not recoverable. The project
+  now has four active Secret Manager versions in total, one per secret.
 - Documented `GARMIN_TOKENS_SECRET_ID` and `GARMIN_TOKENS_SECRET_PROJECT` in
   `.env.example` and `docs/cloud_function.md`.
 - Added a generic destination keepalive hook. The sync engine calls it once

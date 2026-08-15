@@ -261,7 +261,7 @@ def persist_tokens_json_to_secret_manager(
     secret_id: str,
     project_id: str | None = None,
 ) -> None:
-    """Add a new Secret Manager version when Garmin token JSON changed."""
+    """Persist Garmin tokens and retain only the latest Secret Manager version."""
 
     _validate_tokens_json(tokens_json)
 
@@ -285,22 +285,81 @@ def persist_tokens_json_to_secret_manager(
 
     client = secretmanager.SecretManagerServiceClient()
     secret_name = f"projects/{resolved_project_id}/secrets/{secret_id}"
-    latest_name = f"{secret_name}/versions/latest"
+    _persist_tokens_json_with_client(
+        client,
+        tokens_json=tokens_json,
+        secret_name=secret_name,
+        not_found_error=NotFound,
+    )
+
+
+def _persist_tokens_json_with_client(
+    client: Any,
+    *,
+    tokens_json: str,
+    secret_name: str,
+    not_found_error: type[Exception],
+) -> None:
+    """Persist tokens through an injected Secret Manager client."""
 
     try:
-        latest = client.access_secret_version(request={"name": latest_name})
+        latest = client.access_secret_version(
+            request={"name": f"{secret_name}/versions/latest"}
+        )
         latest_tokens_json = latest.payload.data.decode("utf-8")
         if latest_tokens_json == tokens_json:
+            _destroy_older_secret_versions(
+                client,
+                secret_name=secret_name,
+                keep_version_name=latest.name,
+            )
             return
-    except NotFound:
+    except not_found_error:
         pass
 
-    client.add_secret_version(
+    created_version = client.add_secret_version(
         request={
             "parent": secret_name,
             "payload": {"data": tokens_json.encode("utf-8")},
         }
     )
+    _destroy_older_secret_versions(
+        client,
+        secret_name=secret_name,
+        keep_version_name=created_version.name,
+    )
+
+
+def _destroy_older_secret_versions(
+    client: Any,
+    *,
+    secret_name: str,
+    keep_version_name: str,
+) -> None:
+    """Destroy active versions older than the version being retained.
+
+    Versions newer than ``keep_version_name`` are left intact so overlapping
+    function invocations cannot destroy a token version created by another run.
+    A later run will remove that formerly retained version once it is older than
+    the current latest version.
+    """
+
+    keep_version_number = int(keep_version_name.rsplit("/", 1)[-1])
+    destroyed_names: set[str] = set()
+
+    for state in ("ENABLED", "DISABLED"):
+        versions = client.list_secret_versions(
+            request={
+                "parent": secret_name,
+                "filter": f"state:{state}",
+            }
+        )
+        for version in versions:
+            version_number = int(version.name.rsplit("/", 1)[-1])
+            if version_number >= keep_version_number or version.name in destroyed_names:
+                continue
+            client.destroy_secret_version(request={"name": version.name})
+            destroyed_names.add(version.name)
 
 
 def build_upload_mapping(measurement: WeightMeasurement) -> GarminUploadMapping:

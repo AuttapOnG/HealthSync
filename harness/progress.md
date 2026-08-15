@@ -3,17 +3,20 @@
 ## Current State
 
 The Cloud Function `healthsync-weight-sync` is deployed in `us-central1`
-(project `healthsync-84gaec`) from local `main` at `e57a8d4`, with the merged
-engine fail-fast/auth-logging hardening and timezone-normalization fixes
-live; a Cloud Scheduler job (`healthsync-weight-sync-every-4h`, cron
-`0 */4 * * *`, `Asia/Bangkok`) triggers it, GCS holds sync state, and Garmin
-session tokens are persisted through Secret Manager. The current branch is
-`docs/harness-advancement`, which just completed the harness memory refactor
-into per-feature notes (HS-012), added the ruff/mypy/CI verification gate
-(HS-013), and added the `init.sh` reproducible env bootstrap (HS-014),
-completing the harness-advancement batch. Next work: monitor scheduled runs
-for Zepp token expiry or Garmin auth changes, and decide whether to remove
-the still-present `GARMIN_EMAIL`/`GARMIN_PASSWORD` cloud fallback secrets.
+(project `healthsync-84gaec`) at revision
+`healthsync-weight-sync-00010-zih`, with Garmin token Secret Manager retention
+from HS-011 live. The Cloud Scheduler job
+(`healthsync-weight-sync-every-4h`, cron `0 */4 * * *`, `Asia/Bangkok`) remains
+enabled, GCS holds sync state, and the function service account has version
+management permission only on `garmin-tokens-json`. The deployment preserved
+the existing function configuration. A user-approved manual run verified the
+new revision with HTTP 200, a successful duplicate-only Garmin keepalive, and
+no destination suspension. Retention destroyed 42 old token versions and left
+version 43 as the only active token version. Old version 1 of each static
+provider secret was also destroyed, leaving four active Secret Manager versions
+across the project (one per secret), below the six-version billing-account free
+allowance. Next work: monitor Zepp/Garmin authentication and decide whether to
+remove the still-present `GARMIN_EMAIL`/`GARMIN_PASSWORD` fallback.
 
 ## Feature index
 
@@ -132,3 +135,21 @@ the still-present `GARMIN_EMAIL`/`GARMIN_PASSWORD` cloud fallback secrets.
   keepalive, `destination_suspended: false`. Added `.superpowers/` and
   `docs/superpowers/` to `.gcloudignore` so agent scaffolding is not shipped
   to the function.
+
+- **Deployment 2026-08-15 (Garmin token retention):** Granted
+  `roles/secretmanager.secretVersionManager` on only `garmin-tokens-json` to
+  `healthsync-runner`, committed HS-011 retention as `5a56666`, and deployed a
+  source-only update to Cloud Function revision
+  `healthsync-weight-sync-00010-zih`. State is ACTIVE with 100% traffic; the
+  existing 512 MiB memory, 120-second timeout, service account, environment,
+  secrets, and scheduler configuration were preserved. Pre-deploy GCS state
+  had 47 synced keys and no destination suspension. A subsequent user-approved
+  manual scheduler run completed with HTTP 200: fetched 1, skipped 1 duplicate,
+  uploaded 0, keepalive 1, failed 0, and no destination suspension. Secret
+  retention destroyed versions 1-42 and retained version 43 as the sole active
+  `garmin-tokens-json` version; GCS state remained at 47 synced keys with no
+  suspension. After confirming that version 2 was the enabled latest version,
+  the user approved permanent destruction of the differing historical version
+  1 for `garmin-email`, `garmin-password`, and `zepp-app-token`. Each project
+  secret now has one active version (four total); the historical values cannot
+  be recovered.
