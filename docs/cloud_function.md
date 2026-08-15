@@ -88,10 +88,14 @@ that value to `/tmp/garmin-session/garmin_tokens.json` before Garmin login.
 `GARMIN_TOKENS_SECRET_ID` is optional but recommended for unattended scheduled
 runs. When set, HealthSync reads the post-login token cache from
 `GARMIN_SESSION_DIR/garmin_tokens.json` and writes it back to Secret Manager as
-a new version if it changed. Set `GARMIN_TOKENS_SECRET_PROJECT` when the Google
-Cloud project cannot be inferred from application default credentials. The
-function service account needs permission to read the latest version and add a
-new version on that secret.
+a new version if it changed. After each persistence attempt, HealthSync destroys
+older active token versions so only the latest version remains billable. Set
+`GARMIN_TOKENS_SECRET_PROJECT` when the Google Cloud project cannot be inferred
+from application default credentials. The function service account needs
+permission to access, list, add, and destroy versions on that secret. Grant
+`roles/secretmanager.secretVersionManager` and
+`roles/secretmanager.secretAccessor` on the individual token secret rather than
+at project level.
 
 When a scheduled Garmin run fetches only measurements that were already synced,
 HealthSync makes one read-only Garmin keepalive request instead of posting a

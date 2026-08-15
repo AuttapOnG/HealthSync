@@ -1,6 +1,6 @@
 # HS-011 Harden Garmin unattended auth
 
-Status: done · Branch: -
+Status: done · Branch: `fix/HS-011-garmin-secret-version-retention`
 
 ## Decisions
 
@@ -29,6 +29,16 @@ Status: done · Branch: -
 - Added optional Secret Manager persistence for refreshed Garmin token cache
   JSON, plus tests for config parsing, no-overwrite hydration, and
   persistence dispatch.
+- Limited persisted Garmin token history to one active Secret Manager version.
+  Each persistence attempt now destroys versions older than the retained latest
+  version, including cleanup when token JSON is unchanged. Versions newer than
+  the retained version are never destroyed, protecting overlapping invocations.
+  Cloud IAM now also requires Secret Version Manager on the token secret.
+- Granted `roles/secretmanager.secretVersionManager` on only
+  `garmin-tokens-json` to the deployed `healthsync-runner` service account on
+  2026-08-15. The existing Secret Accessor and Secret Version Adder bindings
+  were left unchanged; no token versions were destroyed and no deployment was
+  performed as part of the IAM update.
 - Documented `GARMIN_TOKENS_SECRET_ID` and `GARMIN_TOKENS_SECRET_PROJECT` in
   `.env.example` and `docs/cloud_function.md`.
 - Added a generic destination keepalive hook. The sync engine calls it once
