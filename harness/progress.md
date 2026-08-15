@@ -12,9 +12,11 @@ management permission only on `garmin-tokens-json`. The deployment preserved
 the existing function configuration. A user-approved manual run verified the
 new revision with HTTP 200, a successful duplicate-only Garmin keepalive, and
 no destination suspension. Retention destroyed 42 old token versions and left
-version 43 as the only active version. Next work: monitor Zepp/Garmin
-authentication and decide whether to remove the still-present
-`GARMIN_EMAIL`/`GARMIN_PASSWORD` fallback.
+version 43 as the only active token version. Old version 1 of each static
+provider secret was also destroyed, leaving four active Secret Manager versions
+across the project (one per secret), below the six-version billing-account free
+allowance. Next work: monitor Zepp/Garmin authentication and decide whether to
+remove the still-present `GARMIN_EMAIL`/`GARMIN_PASSWORD` fallback.
 
 ## Feature index
 
@@ -146,4 +148,8 @@ authentication and decide whether to remove the still-present
   uploaded 0, keepalive 1, failed 0, and no destination suspension. Secret
   retention destroyed versions 1-42 and retained version 43 as the sole active
   `garmin-tokens-json` version; GCS state remained at 47 synced keys with no
-  suspension.
+  suspension. After confirming that version 2 was the enabled latest version,
+  the user approved permanent destruction of the differing historical version
+  1 for `garmin-email`, `garmin-password`, and `zepp-app-token`. Each project
+  secret now has one active version (four total); the historical values cannot
+  be recovered.

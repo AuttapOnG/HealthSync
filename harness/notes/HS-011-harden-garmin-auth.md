@@ -47,6 +47,11 @@ Status: done · Branch: `fix/HS-011-garmin-secret-version-retention`
   keepalive, no upload or failure, and no destination suspension. Cleanup
   destroyed token versions 1-42 and retained version 43 as the only active
   version.
+- After verifying version 2 was enabled and latest for the three static
+  provider secrets, permanently destroyed historical version 1 of
+  `garmin-email`, `garmin-password`, and `zepp-app-token` with user approval.
+  The old values differed from version 2 and are not recoverable. The project
+  now has four active Secret Manager versions in total, one per secret.
 - Documented `GARMIN_TOKENS_SECRET_ID` and `GARMIN_TOKENS_SECRET_PROJECT` in
   `.env.example` and `docs/cloud_function.md`.
 - Added a generic destination keepalive hook. The sync engine calls it once
