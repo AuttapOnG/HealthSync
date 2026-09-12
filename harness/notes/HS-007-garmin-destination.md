@@ -4,6 +4,23 @@ Status: done · Branch: -
 
 ## Decisions
 
+- **2026-09-12:** At the user's request, Garmin destination uploads floor
+  weight to one decimal place in kg (96.95 -> 96.9; 97.00 -> 97.0), using
+  decimal arithmetic. Applies to plain weight and body-composition uploads.
+  Canonical measurements and sync keys retain full source precision, so old
+  records are not re-uploaded. Verification compares against the floored value.
+  Implemented on `feature/HS-007-garmin-weight-precision` and deployed as
+  `healthsync-weight-sync-00012-wet` on 2026-09-12. The first cloud run passed
+  with one duplicate skipped and a successful keepalive. After explicit user
+  approval for permanent deletion, replaced the 2026-09-12 18:27 Asia/Bangkok
+  96.95 kg entry with 96.9 kg at the identical measurement timestamp. Verified
+  the new record before deleting the original and verified the final daily
+  record set preserves every other entry. Raw original records are backed up
+  locally under `.local/`; canonical sync state was not changed.
+  Validation: 102 tests passed, ruff lint and mypy passed. Regression coverage
+  includes decimal boundaries, both payload types, read-back success/failure,
+  unchanged source values, and duplicate skipping after a floored upload.
+
 - Run a Garmin Connect destination POC before implementing the full Garmin
   adapter because Garmin authentication, 2FA, and weight upload behavior
   needed confirmation (see HS-010).

@@ -79,6 +79,10 @@ python scripts/sync_weight.py
 Dry-run mode does not mark measurements as synced, so a later Garmin run can
 still upload the same measurement after you confirm it.
 
+The Garmin destination floors weight to one decimal place in kg before upload
+(for example, 96.95 becomes 96.9). Source values and duplicate-detection keys
+keep their original precision. Already synced records are not rewritten.
+
 To upload to Garmin, both confirmations are required in the same runtime:
 
 ```powershell

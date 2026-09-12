@@ -8,6 +8,7 @@ import os
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
+from decimal import ROUND_FLOOR, Decimal
 from pathlib import Path
 from typing import Any, cast
 
@@ -369,7 +370,7 @@ def build_upload_mapping(measurement: WeightMeasurement) -> GarminUploadMapping:
     if measurement.body_fat_percent is not None or measurement.muscle_mass_kg is not None:
         args: dict[str, Any] = {
             "timestamp": timestamp,
-            "weight": measurement.weight_kg,
+            "weight": _garmin_weight_kg(measurement.weight_kg),
         }
         if measurement.body_fat_percent is not None:
             args["percent_fat"] = measurement.body_fat_percent
@@ -380,11 +381,16 @@ def build_upload_mapping(measurement: WeightMeasurement) -> GarminUploadMapping:
     return GarminUploadMapping(
         method="add_weigh_in",
         args={
-            "weight": measurement.weight_kg,
+            "weight": _garmin_weight_kg(measurement.weight_kg),
             "unitKey": "kg",
             "timestamp": timestamp,
         },
     )
+
+
+def _garmin_weight_kg(value: float) -> float:
+    """Floor only the destination weight to 0.1 kg; preserve source precision."""
+    return float(Decimal(str(value)).quantize(Decimal("0.1"), rounding=ROUND_FLOOR))
 
 
 def _garmin_timestamp(value: datetime) -> str:
@@ -414,8 +420,9 @@ def verify_uploaded_weight(client: Any, measurement: WeightMeasurement) -> None:
         for record in _iter_weight_record_dicts(records)
         if (weight_kg := garmin_record_weight_kg(record)) is not None
     ]
+    expected_weight = _garmin_weight_kg(measurement.weight_kg)
     for weight_kg in read_back_weights:
-        if abs(weight_kg - measurement.weight_kg) <= WEIGHT_MATCH_TOLERANCE_KG:
+        if abs(weight_kg - expected_weight) <= WEIGHT_MATCH_TOLERANCE_KG:
             return
 
     values = ", ".join(f"{weight_kg:.3f} kg" for weight_kg in read_back_weights)
@@ -423,7 +430,7 @@ def verify_uploaded_weight(client: Any, measurement: WeightMeasurement) -> None:
         values = "no Garmin weight records"
     raise GarminVerificationError(
         "Garmin weight verification failed: expected "
-        f"{measurement.weight_kg:.3f} kg on {measurement_date.isoformat()}, "
+        f"{expected_weight:.3f} kg on {measurement_date.isoformat()}, "
         f"read back {values}"
     )
 

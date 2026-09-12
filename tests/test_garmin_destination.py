@@ -128,6 +128,49 @@ def test_maps_body_fat_to_garmin_body_composition_payload() -> None:
     }
 
 
+@pytest.mark.parametrize(
+    "weight, expected", [(96.95, 96.9), (96.99, 96.9), (97.0, 97.0), (72.3, 72.3)]
+)
+@pytest.mark.parametrize("body_fat", [None, 18.2])
+def test_garmin_weight_floors_without_changing_source_or_sync_key(
+    weight, expected, body_fat
+):
+    measurement = make_measurement(weight_kg=weight, body_fat_percent=body_fat)
+    original_key = measurement.sync_key
+    mapping = build_upload_mapping(measurement)
+    assert mapping.args["weight"] == expected
+    assert measurement.weight_kg == weight
+    assert measurement.sync_key == original_key
+
+
+@pytest.mark.parametrize(
+    "read_back_grams, succeeded", [(96900.0, True), (96950.0, False)]
+)
+def test_verification_uses_floored_weight_and_preserves_duplicate_detection(
+    tmp_path, read_back_grams, succeeded
+):
+    measurement = make_measurement(weight_kg=96.95)
+    state = FileSyncState(tmp_path / "sync_state.json")
+    calls = []
+    destination = GarminWeightDestination(
+        GarminConfig(session_dir=tmp_path / "session", verify_uploads=True),
+        client_factory=lambda **kwargs: FakeGarminClient(
+            calls=calls, weigh_ins=[{"weight": read_back_grams}], **kwargs
+        ),
+    )
+    engine = WeightSyncEngine(
+        FakeWeightSource([measurement]), destination, sync_state=state
+    )
+    result = engine.sync_weight_measurements()
+    assert result.uploaded_count == int(succeeded)
+    assert result.failed_count == int(not succeeded)
+    assert state.is_synced(measurement.sync_key) is succeeded
+    if succeeded:
+        again = engine.sync_weight_measurements()
+        assert again.skipped_count == 1
+        assert sum(name == "add_weigh_in" for name, _ in calls) == 1
+
+
 def test_config_reads_environment_and_ignores_placeholders(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

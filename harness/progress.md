@@ -2,21 +2,31 @@
 
 ## Current State
 
-The Cloud Function `healthsync-weight-sync` is deployed in `us-central1`
-(project `healthsync-84gaec`) at revision
-`healthsync-weight-sync-00010-zih`, with Garmin token Secret Manager retention
-from HS-011 live. The Cloud Scheduler job
-(`healthsync-weight-sync-every-4h`, cron `0 */4 * * *`, `Asia/Bangkok`) remains
-enabled, GCS holds sync state, and the function service account has version
-management permission only on `garmin-tokens-json`. The deployment preserved
-the existing function configuration. A user-approved manual run verified the
-new revision with HTTP 200, a successful duplicate-only Garmin keepalive, and
-no destination suspension. Retention destroyed 42 old token versions and left
-version 43 as the only active token version. Old version 1 of each static
-provider secret was also destroyed, leaving four active Secret Manager versions
-across the project (one per secret), below the six-version billing-account free
-allowance. Next work: monitor Zepp/Garmin authentication and decide whether to
-remove the still-present `GARMIN_EMAIL`/`GARMIN_PASSWORD` fallback.
+Garmin sync recovered on 2026-09-12. The Cloud Run service underlying Cloud
+Function `healthsync-weight-sync` (project `healthsync-84gaec`, `us-central1`)
+now serves revision `healthsync-weight-sync-00012-wet` with the user-requested
+one-decimal floor mapping. The source deployment followed the revision-only
+session recovery and restored aligned Cloud Functions management metadata.
+The existing `garmin-tokens-json` secret has version 61 enabled; old version 60
+is DESTROYED. A manual scheduled run at 21:28 Asia/Bangkok returned HTTP 200,
+fetched 1 and uploaded 1, with no failures or suspension. GCS state has 65
+synced keys, preserves all 64 previous keys, and has no destination suspensions.
+The every-four-hour scheduler remains ENABLED. Historical backfill for the
+interruption is not verified: the recovery source fetch returned one record.
+Secret-version audit on 2026-09-12 confirmed four active versions total in
+this project (one per secret, automatic replication, no disabled versions).
+Garmin retention keeps only its latest version. The six-version free allowance
+and 10,000 monthly access-operation allowance are shared across the billing
+account; other projects and month-to-date access usage were not audited here.
+Next work: monitor authentication and improve visibility of suspended runs,
+which currently return HTTP 200 and appear successful to Cloud Scheduler.
+
+The 21:41 Asia/Bangkok post-deployment run fetched one duplicate, skipped its
+upload, and completed keepalive successfully (HTTP 200, no suspension).
+With explicit user approval, the existing 96.95 kg Garmin entry was replaced
+by 96.9 kg at the same measurement timestamp. Read-back verified the new entry,
+removal of the original, and preservation of all other daily records. Sync
+state was unchanged, preventing another upload of the original source value.
 
 ## Feature index
 
@@ -153,3 +163,20 @@ remove the still-present `GARMIN_EMAIL`/`GARMIN_PASSWORD` fallback.
   1 for `garmin-email`, `garmin-password`, and `zepp-app-token`. Each project
   secret now has one active version (four total); the historical values cannot
   be recovered.
+
+- **Recovery 2026-09-12:** Logs confirmed the last pre-incident upload at
+  2026-09-02 08:00 Asia/Bangkok. The 16:00 run failed Garmin stored-session
+  profile retrieval and SSL login/keepalive, causing manual suspension until
+  recovery. The user reauthenticated locally (including MFA), then explicitly
+  authorized replacing the existing secret and discarding the old token.
+  Added the local session as version 61 of `garmin-tokens-json`. Rolled out
+  `healthsync-weight-sync-recovery-20260912` via Cloud Run with the existing
+  image/configuration so new instances hydrate the latest secret. Backed up
+  state locally and removed only the Garmin suspension with GCS generation
+  precondition 1788339980611910. Triggered one scheduler run: at
+  2026-09-12T14:28:17Z it reported fetched 1, uploaded 1, failed 0, HTTP 200,
+  and no suspension. Verified 65 synced keys with all 64 original keys
+  preserved. Runtime token retention destroyed version 60; version 61 is the
+  only active Garmin token version. Scheduler remains enabled at
+  `0 */4 * * *`, Asia/Bangkok. Local credentials and recovery state snapshots
+  remain gitignored; no secrets were written to tracked files.
